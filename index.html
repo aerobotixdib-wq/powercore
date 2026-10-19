@@ -1,0 +1,531 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#02060c">
+<title>Power Core</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Share+Tech+Mono&display=swap">
+<style>
+  /* Full-bleed camera stage, HUD pinned to corners, one launch screen */
+  :root{
+    --ink:#02060c; --cyan:#5fe8ff; --ice:#d9fbff; --blue:#2a7dff; --amber:#ffb347; --dim:rgba(2,6,12,.55);
+    --display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;
+    --mono:"Share Tech Mono",ui-monospace,Menlo,monospace;
+    color-scheme:dark;
+  }
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--ice);overflow:hidden;
+    font-family:var(--display);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
+  #stage{position:fixed;inset:0;overflow:hidden;will-change:transform}
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);transition:filter .3s}
+  #cam.nomirror{transform:none}
+  #gl,#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,#fff 0%,var(--cyan) 40%,rgba(42,125,255,.0) 80%)}
+  .hud{position:fixed;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--cyan);text-shadow:0 0 6px rgba(95,232,255,.8);pointer-events:none;transition:opacity .25s}
+  #tl{top:calc(env(safe-area-inset-top,0px) + 12px);left:max(14px,env(safe-area-inset-left,0px));display:grid;gap:6px}
+  #tl b{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--ice)}
+  #status{display:inline-block;padding:3px 8px;border:1px solid var(--cyan);background:rgba(95,232,255,.08)}
+  #status.hot{color:var(--amber);border-color:var(--amber);text-shadow:0 0 6px rgba(255,179,71,.9);background:rgba(255,179,71,.1)}
+  #tr{top:calc(env(safe-area-inset-top,0px) + 12px);right:max(14px,env(safe-area-inset-right,0px));text-align:right;display:grid;gap:4px}
+  #vel{font-family:var(--display);font-size:22px;letter-spacing:.06em;color:var(--ice);font-variant-numeric:tabular-nums}
+  #bar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;
+    padding:10px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px));transition:opacity .25s}
+  #bar button{font:inherit;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);
+    background:rgba(2,6,12,.55);border:1px solid rgba(95,232,255,.6);padding:9px 11px;border-radius:2px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  #bar button[aria-pressed="true"]{background:rgba(95,232,255,.22);color:var(--ice)}
+  #bar button:focus-visible,#go:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+  body.clean .hud,body.clean #bar{opacity:0;pointer-events:none}
+  #tip{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);text-align:center;font-family:var(--mono);
+    font-size:11px;letter-spacing:.14em;color:var(--ice);opacity:.8;text-transform:uppercase;pointer-events:none;transition:opacity .25s}
+  body.clean #tip{opacity:0}
+  #intro{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(120% 80% at 50% 35%,#0b2233 0%,var(--ink) 70%);
+    padding:24px max(20px,env(safe-area-inset-right,0px)) 24px max(20px,env(safe-area-inset-left,0px));z-index:5}
+  #intro .box{max-width:360px;display:grid;gap:18px}
+  #intro h1{margin:0;font-size:40px;line-height:1;letter-spacing:.08em;font-weight:700;color:var(--ice);text-shadow:0 0 18px rgba(95,232,255,.7)}
+  #intro .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--cyan);text-transform:uppercase}
+  #intro ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;font-family:var(--mono);font-size:13px;line-height:1.45;color:#b8dfe8}
+  #intro ol li{display:grid;grid-template-columns:62px 1fr;gap:10px}
+  #intro ol span{color:var(--cyan);letter-spacing:.12em}
+  #go{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.2em;color:var(--ink);background:var(--cyan);
+    border:0;padding:16px 18px;border-radius:2px;box-shadow:0 0 24px rgba(95,232,255,.6)}
+  #go:disabled{opacity:.6}
+  #msg{font-family:var(--mono);font-size:12px;color:var(--amber);min-height:1em;line-height:1.4}
+  @media (prefers-reduced-motion:reduce){#cam{transition:none}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="cam" playsinline muted autoplay></video>
+  <canvas id="gl"></canvas>
+  <canvas id="fx"></canvas>
+</div>
+<div id="flash"></div>
+
+<div class="hud" id="tl"><b>POWER CORE</b><span id="status">Standby</span></div>
+<div class="hud" id="tr"><span>Core velocity</span><span id="vel">0 km/h</span><span id="spinr">Spin 0 rpm</span></div>
+<div id="tip">Raise both hands to grab the core</div>
+<div id="bar">
+  <button id="bClean" type="button">Hide UI</button>
+  <button id="bMirror" type="button" aria-pressed="true">Mirror</button>
+  <button id="bDim" type="button" aria-pressed="false">Dim</button>
+  <button id="bBw" type="button" aria-pressed="false">B&amp;W</button>
+  <button id="bSound" type="button" aria-pressed="true">Sound</button>
+  <button id="bFlip" type="button">Flip cam</button>
+</div>
+
+<div id="intro">
+  <div class="box">
+    <div class="eyebrow">Aerobotix · hand-tracked hologram</div>
+    <h1>POWER CORE</h1>
+    <ol>
+      <li><span>GRAB</span>Raise both open hands. The core locks between your palms.</li>
+      <li><span>SPIN</span>Turn your hands around it like a steering wheel.</li>
+      <li><span>THROW</span>Push both hands fast in any direction, or straight at the camera.</li>
+    </ol>
+    <button id="go" type="button" disabled>Loading…</button>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
+
+const $ = s => document.querySelector(s);
+const video = $('#cam'), fxc = $('#fx'), ctx = fxc.getContext('2d');
+const statusEl = $('#status'), velEl = $('#vel'), spinEl = $('#spinr'), tipEl = $('#tip'), flashEl = $('#flash'), stage = $('#stage');
+
+// ---------- Three.js scene ----------
+const renderer = new THREE.WebGLRenderer({canvas: $('#gl'), alpha: true, antialias: true, premultipliedAlpha: false});
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const FOV = 45, CAMZ = 10;
+const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 100);
+camera.position.z = CAMZ;
+let W = 1, H = 1, DPR = 1, worldW = 1, worldH = 1;
+
+function resize(){
+  W = innerWidth; H = innerHeight; DPR = Math.min(devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
+  fxc.width = Math.round(W*DPR); fxc.height = Math.round(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  camera.aspect = W/H; camera.updateProjectionMatrix();
+  worldH = 2*CAMZ*Math.tan(THREE.MathUtils.degToRad(FOV/2)); worldW = worldH*W/H;
+}
+addEventListener('resize', resize); resize();
+
+const CYAN = new THREE.Color(0x5fe8ff), ICE = new THREE.Color(0xd9fbff), BLUE = new THREE.Color(0x2a7dff), AMBER = new THREE.Color(0xffb347);
+const ADD = {transparent:true, blending:THREE.AdditiveBlending, depthWrite:false};
+
+function glowTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), r = g.createRadialGradient(64,64,0,64,64,64);
+  r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.18,'rgba(255,255,255,.85)');
+  r.addColorStop(.45,'rgba(255,255,255,.25)'); r.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0,0,128,128);
+  const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const GLOW = glowTexture();
+
+const core = new THREE.Group(); scene.add(core);
+const mats = [];
+function track(m){ m.userData.base = m.opacity; mats.push(m); return m; }
+
+const halo = new THREE.Sprite(track(new THREE.SpriteMaterial({map:GLOW, color:CYAN, opacity:.75, ...ADD})));
+halo.scale.set(4.2,4.2,1); core.add(halo);
+const heart = new THREE.Sprite(track(new THREE.SpriteMaterial({map:GLOW, color:ICE, opacity:1, ...ADD})));
+heart.scale.set(1.4,1.4,1); core.add(heart);
+
+const shell = new THREE.Group(); core.add(shell);
+const ico1 = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(.62,1)), track(new THREE.LineBasicMaterial({color:CYAN, opacity:.95, ...ADD})));
+const ico2 = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.IcosahedronGeometry(.88,0)), track(new THREE.LineBasicMaterial({color:BLUE, opacity:.8, ...ADD})));
+const oct = new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.OctahedronGeometry(.45,0)), track(new THREE.LineBasicMaterial({color:ICE, opacity:.9, ...ADD})));
+shell.add(ico1, ico2, oct);
+
+function tickRing(r, n, len, color, op){
+  const g = new THREE.Group();
+  const tor = new THREE.Mesh(new THREE.TorusGeometry(r, .018, 6, 120), track(new THREE.MeshBasicMaterial({color, opacity:op, ...ADD})));
+  g.add(tor);
+  const pts = [];
+  for(let i=0;i<n;i++){ const a = i/n*Math.PI*2, l = i%4===0 ? len*1.8 : len;
+    pts.push(Math.cos(a)*r, Math.sin(a)*r, 0, Math.cos(a)*(r+l), Math.sin(a)*(r+l), 0); }
+  const geo = new THREE.BufferGeometry(); geo.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
+  g.add(new THREE.LineSegments(geo, track(new THREE.LineBasicMaterial({color, opacity:op*.9, ...ADD}))));
+  // two bright arc segments
+  const arc = new THREE.Mesh(new THREE.TorusGeometry(r+len*2.6, .03, 6, 40, Math.PI*.45), track(new THREE.MeshBasicMaterial({color:ICE, opacity:.9, ...ADD})));
+  const arc2 = arc.clone(); arc2.rotation.z = Math.PI;
+  g.add(arc, arc2);
+  return g;
+}
+const ringA = tickRing(1.12, 60, .07, CYAN, .9);
+const ringB = tickRing(1.32, 36, .06, BLUE, .75); ringB.rotation.x = Math.PI/2;
+const ringC = tickRing(1.5, 24, .09, CYAN, .55); ringC.rotation.y = Math.PI/2.6;
+core.add(ringA, ringB, ringC);
+
+// orbiting motes
+const motes = new THREE.Group(); core.add(motes);
+for(let i=0;i<14;i++){
+  const s = new THREE.Sprite(track(new THREE.SpriteMaterial({map:GLOW, color: i%3? CYAN: ICE, opacity:.9, ...ADD})));
+  s.scale.setScalar(.18 + Math.random()*.12);
+  s.userData = {r:1.6+Math.random()*.5, a:Math.random()*6.28, sp:(Math.random()*.8+.6)*(Math.random()<.5?-1:1), tilt:Math.random()*Math.PI};
+  motes.add(s);
+}
+
+// ---------- particles ----------
+const MAXP = 1400;
+const pPos = new Float32Array(MAXP*3), pCol = new Float32Array(MAXP*3), pSize = new Float32Array(MAXP), pAlpha = new Float32Array(MAXP);
+const pVel = new Float32Array(MAXP*3), pLife = new Float32Array(MAXP), pMax = new Float32Array(MAXP), pBase = new Float32Array(MAXP);
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(pCol,3));
+pGeo.setAttribute('size', new THREE.BufferAttribute(pSize,1));
+pGeo.setAttribute('alpha', new THREE.BufferAttribute(pAlpha,1));
+const pMat = new THREE.ShaderMaterial({
+  uniforms:{scale:{value:300}},
+  vertexShader:`attribute float size; attribute float alpha; attribute vec3 color; varying vec3 vC; varying float vA; uniform float scale;
+    void main(){ vC=color; vA=alpha; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=size*scale/max(0.5,-mv.z); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader:`varying vec3 vC; varying float vA; void main(){ float d=length(gl_PointCoord-0.5); float a=smoothstep(0.5,0.0,d); a*=a; gl_FragColor=vec4(vC*(1.0+a), a*vA); }`,
+  ...ADD
+});
+const points = new THREE.Points(pGeo, pMat); points.frustumCulled = false; scene.add(points);
+let pHead = 0;
+function spawn(x,y,z, vx,vy,vz, life, size, col){
+  const i = pHead; pHead = (pHead+1)%MAXP;
+  pPos[i*3]=x; pPos[i*3+1]=y; pPos[i*3+2]=z; pVel[i*3]=vx; pVel[i*3+1]=vy; pVel[i*3+2]=vz;
+  pLife[i]=life; pMax[i]=life; pBase[i]=size; pCol[i*3]=col.r; pCol[i*3+1]=col.g; pCol[i*3+2]=col.b;
+}
+function stepParticles(dt){
+  for(let i=0;i<MAXP;i++){
+    if(pLife[i]<=0){ pAlpha[i]=0; pSize[i]=0; continue; }
+    pLife[i]-=dt; const k = Math.max(0,pLife[i]/pMax[i]);
+    pPos[i*3]+=pVel[i*3]*dt; pPos[i*3+1]+=pVel[i*3+1]*dt; pPos[i*3+2]+=pVel[i*3+2]*dt;
+    pVel[i*3]*=.96; pVel[i*3+1]*=.96; pVel[i*3+2]*=.96;
+    pAlpha[i]=k; pSize[i]=pBase[i]*(.4+.6*k);
+  }
+  for(const n of ['position','color','size','alpha']) pGeo.attributes[n].needsUpdate = true;
+}
+function burst(x,y,z,n,speed,col,size=.25,life=.8){
+  for(let i=0;i<n;i++){
+    const u=Math.random()*2-1, th=Math.random()*6.283, s=Math.sqrt(1-u*u), sp=speed*(.4+Math.random()*.6);
+    spawn(x,y,z, Math.cos(th)*s*sp, Math.sin(th)*s*sp, u*sp, life*(.6+Math.random()*.6), size*(.6+Math.random()*.8), Math.random()<.3?ICE:col);
+  }
+}
+
+// shockwave rings
+const waves = [];
+for(let i=0;i<4;i++){
+  const m = new THREE.Mesh(new THREE.RingGeometry(.92,1,96), new THREE.MeshBasicMaterial({color:CYAN, opacity:0, side:THREE.DoubleSide, ...ADD}));
+  m.visible=false; scene.add(m); waves.push({m, t:1, dur:.6, max:6});
+}
+function shock(pos, max=6, dur=.6, col=CYAN){
+  const w = waves.find(w=>w.t>=1) || waves[0];
+  w.m.position.copy(pos); w.t=0; w.dur=dur; w.max=max; w.m.material.color.copy(col); w.m.visible=true;
+}
+function stepWaves(dt){
+  for(const w of waves){ if(w.t>=1){ w.m.visible=false; continue; }
+    w.t = Math.min(1, w.t+dt/w.dur); const e = 1-Math.pow(1-w.t,3);
+    w.m.scale.setScalar(.2+e*w.max); w.m.material.opacity = (1-w.t)*.9; }
+}
+
+// ---------- audio ----------
+let AC=null, humGain=null, humOsc=null, humOsc2=null, soundOn=true, noiseBuf=null;
+function initAudio(){
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    const master = AC.createGain(); master.gain.value=.9; master.connect(AC.destination); AC.master = master;
+    humGain = AC.createGain(); humGain.gain.value=0;
+    const lp = AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=420;
+    humOsc = AC.createOscillator(); humOsc.type='sawtooth'; humOsc.frequency.value=55;
+    humOsc2 = AC.createOscillator(); humOsc2.type='sine'; humOsc2.frequency.value=110;
+    humOsc.connect(lp); humOsc2.connect(lp); lp.connect(humGain); humGain.connect(master);
+    humOsc.start(); humOsc2.start();
+    noiseBuf = AC.createBuffer(1, AC.sampleRate*1.2, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1;
+  }catch(e){ AC=null; }
+}
+function whoosh(){
+  if(!AC||!soundOn) return; const t=AC.currentTime;
+  const n=AC.createBufferSource(); n.buffer=noiseBuf;
+  const bp=AC.createBiquadFilter(); bp.type='bandpass'; bp.Q.value=1.2;
+  bp.frequency.setValueAtTime(300,t); bp.frequency.exponentialRampToValueAtTime(3800,t+.18); bp.frequency.exponentialRampToValueAtTime(250,t+.9);
+  const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(1.1,t+.05); g.gain.exponentialRampToValueAtTime(.001,t+.95);
+  n.connect(bp); bp.connect(g); g.connect(AC.master); n.start(t); n.stop(t+1);
+  const o=AC.createOscillator(); o.type='triangle'; o.frequency.setValueAtTime(900,t); o.frequency.exponentialRampToValueAtTime(90,t+.5);
+  const g2=AC.createGain(); g2.gain.setValueAtTime(.35,t); g2.gain.exponentialRampToValueAtTime(.001,t+.5);
+  o.connect(g2); g2.connect(AC.master); o.start(t); o.stop(t+.55);
+}
+function boom(big){
+  if(!AC||!soundOn) return; const t=AC.currentTime;
+  const o=AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(big?140:110,t); o.frequency.exponentialRampToValueAtTime(32,t+.7);
+  const g=AC.createGain(); g.gain.setValueAtTime(big?1.2:.7,t); g.gain.exponentialRampToValueAtTime(.001,t+.8);
+  o.connect(g); g.connect(AC.master); o.start(t); o.stop(t+.85);
+  const n=AC.createBufferSource(); n.buffer=noiseBuf; const lp=AC.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=900;
+  const g2=AC.createGain(); g2.gain.setValueAtTime(big?.9:.5,t); g2.gain.exponentialRampToValueAtTime(.001,t+.6);
+  n.connect(lp); lp.connect(g2); g2.connect(AC.master); n.start(t); n.stop(t+.65);
+}
+function charge(){
+  if(!AC||!soundOn) return; const t=AC.currentTime;
+  const o=AC.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(180,t); o.frequency.exponentialRampToValueAtTime(1200,t+.6);
+  const g=AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(.25,t+.3); g.gain.exponentialRampToValueAtTime(.001,t+.7);
+  o.connect(g); g.connect(AC.master); o.start(t); o.stop(t+.75);
+}
+
+// ---------- effects helpers ----------
+let shakeAmt = 0;
+function flash(strength=1, ms=420){
+  flashEl.animate([{opacity:Math.min(1,strength)},{opacity:0}], {duration:ms, easing:'cubic-bezier(.2,.7,.3,1)'});
+}
+
+// ---------- hand tracking ----------
+let landmarker = null, mirror = true, facing = 'user', stream = null;
+const goBtn = $('#go'), msg = $('#msg');
+async function loadModel(){
+  const fileset = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+  const opts = d => ({baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate:d},
+    runningMode:'VIDEO', numHands:2, minHandDetectionConfidence:.55, minHandPresenceConfidence:.5, minTrackingConfidence:.5});
+  try{ landmarker = await HandLandmarker.createFromOptions(fileset, opts('GPU')); }
+  catch(e){ landmarker = await HandLandmarker.createFromOptions(fileset, opts('CPU')); }
+}
+loadModel().then(()=>{ goBtn.disabled=false; goBtn.textContent='START CAMERA'; })
+  .catch(e=>{ goBtn.textContent='Could not load'; msg.textContent='Hand tracking failed to load. Check the internet connection and reload the page.'; console.error(e); });
+
+async function startCamera(){
+  if(stream) stream.getTracks().forEach(t=>t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:facing, width:{ideal:1280}, height:{ideal:720}}});
+  video.srcObject = stream; await video.play();
+}
+goBtn.addEventListener('click', async ()=>{
+  goBtn.disabled = true; msg.textContent='';
+  initAudio(); if(AC && AC.state==='suspended') AC.resume();
+  try{ await startCamera(); $('#intro').hidden = true; requestAnimationFrame(loop); }
+  catch(e){ goBtn.disabled=false; msg.textContent='Camera blocked. In Safari tap “aA” › Website Settings › Camera › Allow, then try again.'; console.error(e); }
+});
+
+// toolbar
+const toggle = (btn, on) => btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+let dim=false, bw=false;
+function applyFilter(){ video.style.filter = `${dim?'brightness(.45) contrast(1.1)':''} ${bw?'grayscale(1)':''}`.trim() || 'none'; }
+$('#bMirror').onclick = e => { mirror=!mirror; video.classList.toggle('nomirror', !mirror); toggle(e.currentTarget, mirror); };
+$('#bDim').onclick = e => { dim=!dim; applyFilter(); toggle(e.currentTarget, dim); };
+$('#bBw').onclick = e => { bw=!bw; applyFilter(); toggle(e.currentTarget, bw); };
+$('#bSound').onclick = e => { soundOn=!soundOn; toggle(e.currentTarget, soundOn); if(humGain) humGain.gain.value=0; };
+$('#bFlip').onclick = async () => { facing = facing==='user'?'environment':'user'; mirror = facing==='user';
+  video.classList.toggle('nomirror', !mirror); toggle($('#bMirror'), mirror); try{ await startCamera(); }catch(e){} };
+$('#bClean').onclick = e => { e.stopPropagation(); document.body.classList.add('clean'); };
+stage.addEventListener('click', ()=> document.body.classList.remove('clean'));
+
+// map normalized landmark -> screen px (object-fit: cover)
+function mapper(){
+  const vw = video.videoWidth||1280, vh = video.videoHeight||720, s = Math.max(W/vw, H/vh);
+  const dw = vw*s, dh = vh*s, ox = (W-dw)/2, oy = (H-dh)/2;
+  return (p) => ({x: ox + (mirror ? 1-p.x : p.x)*dw, y: oy + p.y*dh});
+}
+const toWorld = (x,y) => new THREE.Vector3((x/W-.5)*worldW, -(y/H-.5)*worldH, 0);
+const toScreen = v => { const p = v.clone().project(camera); return {x:(p.x*.5+.5)*W, y:(-p.y*.5+.5)*H}; };
+
+const smooth = [null, null];
+function readHands(){
+  if(!landmarker || video.readyState < 2) return [];
+  let res; try{ res = landmarker.detectForVideo(video, performance.now()); }catch(e){ return []; }
+  const map = mapper();
+  let hands = (res.landmarks||[]).map(lm => lm.map(map));
+  hands.sort((a,b)=>a[0].x-b[0].x);
+  return hands.map((pts,i)=>{
+    const prev = smooth[i];
+    if(prev && prev.length===pts.length) for(let j=0;j<pts.length;j++){ pts[j].x = prev[j].x+(pts[j].x-prev[j].x)*.6; pts[j].y = prev[j].y+(pts[j].y-prev[j].y)*.6; }
+    smooth[i] = pts;
+    const ids=[0,5,9,13,17]; let cx=0, cy=0; ids.forEach(k=>{cx+=pts[k].x; cy+=pts[k].y;}); cx/=5; cy/=5;
+    const size = Math.hypot(pts[9].x-pts[0].x, pts[9].y-pts[0].y);
+    return {pts, cx, cy, size, angle:Math.atan2(pts[9].y-pts[0].y, pts[9].x-pts[0].x)};
+  });
+}
+
+// ---------- 2D overlay drawing ----------
+function drawHand(h, t, locked){
+  const {pts, cx, cy, size} = h, r = size*.78;
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  ctx.shadowColor='rgba(95,232,255,.9)'; ctx.shadowBlur=14;
+  // skeleton
+  ctx.strokeStyle='rgba(95,232,255,.28)'; ctx.lineWidth=1.2;
+  const chains=[[0,1,2,3,4],[0,5,6,7,8],[9,10,11,12],[13,14,15,16],[0,17,18,19,20],[5,9,13,17]];
+  ctx.beginPath(); for(const c of chains){ ctx.moveTo(pts[c[0]].x,pts[c[0]].y); for(const k of c.slice(1)) ctx.lineTo(pts[k].x,pts[k].y); } ctx.stroke();
+  // palm rings
+  ctx.strokeStyle = locked ? 'rgba(217,251,255,.95)' : 'rgba(95,232,255,.9)';
+  ctx.lineWidth=2.4; ctx.beginPath(); ctx.arc(cx,cy,r,0,Math.PI*2); ctx.stroke();
+  ctx.lineWidth=1.2; ctx.beginPath(); ctx.arc(cx,cy,r*.62,0,Math.PI*2); ctx.stroke();
+  ctx.lineWidth=4; ctx.strokeStyle='rgba(95,232,255,.95)';
+  for(let i=0;i<3;i++){ const a=t*2.2+i*2.094; ctx.beginPath(); ctx.arc(cx,cy,r*1.18,a,a+.7); ctx.stroke(); }
+  ctx.lineWidth=1; ctx.setLineDash([3,6]); ctx.beginPath(); ctx.arc(cx,cy,r*1.36,-t*1.4,-t*1.4+Math.PI*1.6); ctx.stroke(); ctx.setLineDash([]);
+  // fingertips
+  for(const k of [4,8,12,16,20]){ ctx.fillStyle='rgba(217,251,255,.95)'; ctx.beginPath(); ctx.arc(pts[k].x,pts[k].y,3.2,0,Math.PI*2); ctx.fill(); }
+  // wrist band
+  const w = pts[0], ang = h.angle+Math.PI/2;
+  ctx.strokeStyle='rgba(95,232,255,.85)'; ctx.lineWidth=2;
+  ctx.beginPath(); ctx.ellipse(w.x,w.y,size*.45,size*.16,ang,0,Math.PI*2); ctx.stroke();
+  ctx.restore();
+}
+function beam(ax,ay,bx,by,t,hot){
+  ctx.save(); ctx.globalCompositeOperation='lighter';
+  ctx.shadowColor = hot?'rgba(255,179,71,1)':'rgba(95,232,255,1)'; ctx.shadowBlur=18;
+  for(let b=0;b<2;b++){
+    ctx.strokeStyle = b? 'rgba(217,251,255,.9)' : (hot?'rgba(255,179,71,.8)':'rgba(95,232,255,.75)');
+    ctx.lineWidth = b?1.2:2.6; ctx.beginPath(); ctx.moveTo(ax,ay);
+    const n=9, dx=bx-ax, dy=by-ay, len=Math.hypot(dx,dy)||1, nx=-dy/len, ny=dx/len;
+    for(let i=1;i<n;i++){ const f=i/n, j=(Math.random()-.5)*len*.09*Math.sin(f*Math.PI); ctx.lineTo(ax+dx*f+nx*j, ay+dy*f+ny*j); }
+    ctx.lineTo(bx,by); ctx.stroke();
+  }
+  ctx.restore();
+}
+
+// ---------- state machine ----------
+let state='idle', stateT=0, lostT=0, heldSince=0;
+const cp = new THREE.Vector3(), cv = new THREE.Vector3(), spin = new THREE.Vector3(.4,.7,.2);
+let scaleNow = 0, scaleTarget = .8, prevAng = null, last = performance.now(), hot = 0, thrownWithPush=false;
+const hist = [];
+function setState(s){ state=s; stateT=0; }
+function setStatus(txt, isHot){ if(statusEl.textContent!==txt) statusEl.textContent=txt; statusEl.classList.toggle('hot', !!isHot); }
+
+function launch(vx, vy, push){
+  setState('thrown'); thrownWithPush = push; hot = 1;
+  if(push){ cv.set(vx*.4, vy*.4, 34); }
+  else { const m = Math.hypot(vx,vy)||1, sp = Math.max(28, m*1.9); cv.set(vx/m*sp, vy/m*sp, 4); }
+  spin.set(9+Math.random()*4, 12, 18);
+  shock(cp, 4, .45, ICE); burst(cp.x,cp.y,cp.z, 90, 9, CYAN, .3, .6);
+  flash(.45, 300); shakeAmt = 10; whoosh(); hist.length = 0;
+}
+
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now-last)/1000); last = now; const t = now/1000; stateT += dt;
+  const hands = readHands();
+  ctx.clearRect(0,0,W,H);
+
+  let target=null, locked=false;
+  if(hands.length){
+    if(hands.length>=2){
+      const a=hands[0], b=hands[1], mx=(a.cx+b.cx)/2, my=(a.cy+b.cy)/2, d=Math.hypot(b.cx-a.cx,b.cy-a.cy);
+      target={x:mx, y:my, scaleW: Math.min(2.2, Math.max(.45, (d/H*worldH)*.36)), s:(a.size+b.size)/2, ang:Math.atan2(b.cy-a.cy,b.cx-a.cx), two:true};
+    } else {
+      const a=hands[0];
+      target={x:a.cx, y:a.cy - a.size*1.5, scaleW: Math.min(1.6, Math.max(.4, (a.size/H*worldH)*.75)), s:a.size, ang:a.angle, two:false};
+    }
+  }
+
+  if(state==='idle' || state==='held'){
+    if(target){
+      lostT=0;
+      if(state==='idle'){ setState('held'); heldSince=now; prevAng=target.ang; hist.length=0; charge(); }
+      locked = true;
+      const tw = toWorld(target.x, target.y);
+      cp.lerp(tw, 1-Math.exp(-dt*22)); cp.z += (0-cp.z)*.2;
+      scaleTarget = target.scaleW;
+      // spin from hand rotation
+      if(prevAng!==null){ let da = target.ang-prevAng; if(da>Math.PI) da-=Math.PI*2; if(da<-Math.PI) da+=Math.PI*2;
+        spin.z += (-da/dt*.9 - spin.z)*.25; }
+      prevAng = target.ang;
+      hist.push({t:now, x:target.x, y:target.y, s:target.s}); while(hist.length && now-hist[0].t>260) hist.shift();
+      // velocity over ~120ms window
+      const old = hist.find(h=>now-h.t<=140) || hist[0];
+      const span = (now-old.t)/1000;
+      if(span>.05){
+        const vx=(target.x-old.x)/span, vy=(target.y-old.y)/span, sp=Math.hypot(vx,vy)/H, grow=(target.s/old.s-1)/span;
+        spin.y += ((vx/H)*3 - spin.y)*.1; spin.x += ((vy/H)*3 - spin.x)*.1;
+        if(now-heldSince>500){
+          if(sp > (target.two?2.3:2.8)) launch(vx/H*worldH, -vy/H*worldH, false);
+          else if(target.two && grow > 2.4) launch(vx/H*worldH, -vy/H*worldH, true);
+        }
+      }
+    } else {
+      lostT += dt;
+      if(state==='held' && lostT>.35){ setState('idle'); prevAng=null; }
+      if(state==='idle'){
+        const home = new THREE.Vector3(0, Math.sin(t*1.3)*.15, 0);
+        cp.lerp(home, 1-Math.exp(-dt*2.5)); scaleTarget = .8;
+        spin.x += (.4-spin.x)*.02; spin.y += (.7-spin.y)*.02; spin.z += (.2-spin.z)*.02;
+      }
+    }
+    scaleNow += (scaleTarget-scaleNow)*(1-Math.exp(-dt*10));
+  }
+  else if(state==='thrown'){
+    cp.addScaledVector(cv, dt); cv.multiplyScalar(1+dt*1.2);
+    if(thrownWithPush) scaleNow *= 1+dt*.6;
+    for(let i=0;i<14;i++){ const j=.25*scaleNow;
+      spawn(cp.x+(Math.random()-.5)*j, cp.y+(Math.random()-.5)*j, cp.z+(Math.random()-.5)*j,
+        -cv.x*.04+(Math.random()-.5)*1.5, -cv.y*.04+(Math.random()-.5)*1.5, -cv.z*.04, .45+Math.random()*.35, (.28+Math.random()*.3)*Math.max(.6,scaleNow), i%3?CYAN:(i%2?ICE:AMBER)); }
+    const out = Math.abs(cp.x) > worldW/2+2.5 || Math.abs(cp.y) > worldH/2+2.5 || cp.z > CAMZ-1.2 || stateT>1.4;
+    if(out){
+      if(thrownWithPush){ flash(1.1, 700); shakeAmt=26; boom(true); }
+      else { flash(.5, 450); shakeAmt=14; boom(false);
+        const edge = cp.clone(); edge.x = THREE.MathUtils.clamp(edge.x,-worldW/2,worldW/2); edge.y = THREE.MathUtils.clamp(edge.y,-worldH/2,worldH/2); edge.z=0;
+        shock(edge, 7, .7, CYAN); burst(edge.x,edge.y,0, 160, 14, AMBER, .35, .9); }
+      setState('gone'); core.visible=false;
+    }
+  }
+  else if(state==='gone'){
+    if(stateT>1.1){
+      setState('returning'); core.visible=true; scaleNow=0; spin.set(.4,6,3);
+      const home = target ? toWorld(target.x,target.y) : new THREE.Vector3(0,0,0); cp.copy(home);
+      for(let i=0;i<120;i++){ const a=Math.random()*6.283, r=3+Math.random()*2;
+        spawn(cp.x+Math.cos(a)*r, cp.y+Math.sin(a)*r, 0, -Math.cos(a)*r*2.2, -Math.sin(a)*r*2.2, 0, .5, .25, Math.random()<.4?ICE:CYAN); }
+      charge();
+    }
+  }
+  else if(state==='returning'){
+    scaleNow += (.8-scaleNow)*(1-Math.exp(-dt*6));
+    if(target) cp.lerp(toWorld(target.x,target.y), 1-Math.exp(-dt*8));
+    if(stateT>.7){ shock(cp, 3, .5, CYAN); setState('idle'); hist.length=0; }
+  }
+
+  // animate core parts
+  hot = Math.max(0, hot-dt*.8);
+  core.position.copy(cp); core.scale.setScalar(Math.max(.001, scaleNow));
+  shell.rotation.x += spin.x*dt; shell.rotation.y += spin.y*dt; shell.rotation.z += spin.z*dt;
+  ico2.rotation.y -= dt*.9; oct.rotation.x += dt*2.3;
+  ringA.rotation.z += (spin.z*1.2+.6)*dt; ringB.rotation.z -= (spin.y+.9)*dt; ringC.rotation.z += (spin.x+1.2)*dt;
+  ringA.rotation.x = Math.sin(t*.7)*.35 + spin.x*.05; ringA.rotation.y = Math.cos(t*.5)*.3 + spin.y*.05;
+  motes.children.forEach(s=>{ const u=s.userData; u.a += u.sp*dt*(1+Math.abs(spin.z)*.2);
+    s.position.set(Math.cos(u.a)*u.r, Math.sin(u.a)*u.r*Math.cos(u.tilt), Math.sin(u.a)*u.r*Math.sin(u.tilt)); });
+  const pulse = 1 + Math.sin(t*6)*.06 + (locked?.08:0) + hot*.5;
+  heart.scale.setScalar(1.4*pulse); halo.scale.setScalar(4.2*(1+hot*.6)*(locked?1.08:1));
+  halo.material.color.copy(CYAN).lerp(AMBER, hot*.7);
+  heart.material.color.copy(ICE).lerp(AMBER, hot*.35);
+  // spark crackle while held
+  if(locked && Math.random()<.5){ const a=Math.random()*6.283, r=1.2*scaleNow;
+    spawn(cp.x+Math.cos(a)*r, cp.y+Math.sin(a)*r, cp.z, Math.cos(a)*2, Math.sin(a)*2, 0, .35, .18, Math.random()<.5?ICE:CYAN); }
+
+  stepParticles(dt); stepWaves(dt);
+  pMat.uniforms.scale.value = H*DPR/ (2*Math.tan(THREE.MathUtils.degToRad(FOV/2)));
+  renderer.render(scene, camera);
+
+  // hands + beams
+  for(const h of hands) drawHand(h, t, locked);
+  if(locked && core.visible){
+    const c = toScreen(cp);
+    for(const h of hands) beam(h.cx, h.cy, c.x, c.y, t, hot>.2);
+  }
+
+  // shake
+  if(shakeAmt>.2){ stage.style.transform = `translate(${(Math.random()-.5)*shakeAmt}px,${(Math.random()-.5)*shakeAmt}px)`; shakeAmt*=Math.exp(-dt*7); }
+  else if(shakeAmt){ shakeAmt=0; stage.style.transform=''; }
+
+  // audio hum
+  if(humGain && AC){ const g = soundOn && (state==='held') ? .06 + Math.min(.06, Math.abs(spin.z)*.006) : 0;
+    humGain.gain.setTargetAtTime(g, AC.currentTime, .08);
+    humOsc.frequency.setTargetAtTime(55+Math.min(60,Math.abs(spin.z)*4), AC.currentTime, .1); }
+
+  // HUD
+  const kmh = state==='thrown' ? Math.round(cv.length()*38) : 0;
+  velEl.textContent = kmh.toLocaleString('en-IN') + ' km/h';
+  spinEl.textContent = 'Spin ' + Math.round(Math.hypot(spin.x,spin.y,spin.z)*9.55) + ' rpm';
+  if(state==='held'){ setStatus('Locked'); tipEl.textContent = hands.length>=2 ? 'Turn hands to spin · push fast to throw' : 'Add your second hand'; }
+  else if(state==='thrown'){ setStatus('Launched', true); }
+  else if(state==='gone' || state==='returning'){ setStatus('Recharging'); tipEl.textContent = 'Core returning…'; }
+  else { setStatus('Standby'); tipEl.textContent = 'Raise both hands to grab the core'; }
+}
+</script>
+</body>
+</html>
