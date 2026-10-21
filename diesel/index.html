@@ -1,0 +1,1104 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#02060c">
+<title>Diesel Core</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Share+Tech+Mono&display=swap">
+<style>
+  /* Full-bleed stage (camera or blueprint), HUD pinned to corners, throttle on the right edge, actions along the bottom */
+  :root{
+    --ink:#02060c; --panel:rgba(2,6,12,.62); --cyan:#5fe8ff; --ice:#d9fbff; --blue:#2a7dff; --amber:#ffb347;
+    --red:#ff5a5a; --mute:#8fb8c4; --line:rgba(95,232,255,.55);
+    --k-in:#6fb0ff; --k-co:#5fe8ff; --k-po:#ffb347; --k-ex:#b7a6ff;
+    --display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;
+    --mono:"Share Tech Mono",ui-monospace,Menlo,monospace;
+    --gl:max(14px,env(safe-area-inset-left,0px)); --gr:max(14px,env(safe-area-inset-right,0px));
+    color-scheme:dark;
+  }
+  [hidden]{display:none!important}
+  html,body{margin:0;height:100%;background:var(--ink);color:var(--ice);overflow:hidden;
+    font-family:var(--display);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent}
+  #stage{position:fixed;inset:0;overflow:hidden;background:radial-gradient(120% 90% at 50% 40%,#0b2233 0%,var(--ink) 72%)}
+  body.hands #stage{background:#000}
+  #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);transition:filter .3s;display:none}
+  body.hands #cam{display:block}
+  #cam.nomirror{transform:none}
+  #gl{position:absolute;inset:0;width:100%;height:100%;touch-action:none;cursor:grab}
+  #fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+
+  .hud{position:fixed;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
+    color:var(--cyan);text-shadow:0 0 6px rgba(95,232,255,.7);pointer-events:none;transition:opacity .25s}
+  #tl{top:calc(env(safe-area-inset-top,0px) + 12px);left:var(--gl);display:grid;gap:7px;max-width:calc(100vw - 170px)}
+  #tl b{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--ice)}
+  #status{justify-self:start;padding:3px 8px;border:1px solid var(--cyan);background:rgba(95,232,255,.08)}
+  #status.hot{color:var(--amber);border-color:var(--amber);text-shadow:0 0 6px rgba(255,179,71,.9);background:rgba(255,179,71,.1)}
+  .strokes{display:grid;grid-template-columns:repeat(4,minmax(0,auto));gap:4px;justify-content:start}
+  .sk{display:grid;gap:1px;padding:3px 5px;border:1px solid currentColor;background:rgba(2,6,12,.45);font-size:9px;letter-spacing:.08em;min-width:44px}
+  .sk b{font-family:var(--display);font-size:12px;color:var(--ice);letter-spacing:.04em}
+  .sk.track{outline:1px solid var(--ice);outline-offset:1px}
+  .sk[data-k="in"]{color:var(--k-in)} .sk[data-k="co"]{color:var(--k-co)} .sk[data-k="po"]{color:var(--k-po);background:rgba(255,179,71,.14)} .sk[data-k="ex"]{color:var(--k-ex)}
+  #note{max-width:290px;font-size:10px;letter-spacing:.06em;line-height:1.45;text-transform:none;color:#b8dfe8;text-shadow:0 0 4px rgba(0,0,0,.9)}
+
+  #tr{top:calc(env(safe-area-inset-top,0px) + 12px);right:var(--gr);text-align:right;display:grid;gap:3px;font-variant-numeric:tabular-nums}
+  #rpm{font-family:var(--display);font-size:24px;letter-spacing:.04em;color:var(--ice)}
+  #tr .row{display:flex;justify-content:flex-end;gap:8px}
+  #tr .row span:last-child{color:var(--ice);min-width:62px}
+  #temp.warn{color:var(--amber)!important}
+
+  #throttle{position:fixed;right:var(--gr);top:52%;transform:translateY(-50%);display:grid;justify-items:center;gap:6px;
+    font-family:var(--mono);font-size:10px;letter-spacing:.14em;color:var(--cyan);transition:opacity .25s}
+  #thrTrack{position:relative;width:34px;height:clamp(120px,28vh,210px);border:1px solid var(--line);background:rgba(2,6,12,.5);
+    touch-action:none;cursor:ns-resize;border-radius:2px}
+  #thrFill{position:absolute;left:3px;right:3px;bottom:3px;background:linear-gradient(to top,rgba(95,232,255,.35),rgba(255,179,71,.75));box-shadow:0 0 12px rgba(255,179,71,.4)}
+  #thrTrack:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+  #thrTrack.hhover{border-color:var(--amber)}
+  #thrVal{color:var(--ice)}
+
+  #chal{position:fixed;left:50%;transform:translateX(-50%);top:calc(env(safe-area-inset-top,0px) + 118px);padding:6px 10px;
+    border:1px solid var(--amber);color:var(--amber);background:rgba(2,6,12,.7);font-family:var(--mono);font-size:11px;letter-spacing:.12em;
+    white-space:nowrap;font-variant-numeric:tabular-nums;pointer-events:none}
+  #toast{position:fixed;left:50%;top:42%;transform:translate(-50%,-50%);max-width:min(340px,calc(100vw - 40px));padding:10px 14px;text-align:center;
+    background:rgba(2,6,12,.82);border:1px solid var(--cyan);color:var(--ice);font-family:var(--mono);font-size:12px;letter-spacing:.06em;line-height:1.4;
+    pointer-events:none;opacity:0;transition:opacity .2s}
+  #toast.on{opacity:1}
+  #toast.bad{border-color:var(--red);color:#ffd2d2}
+
+  #tip{position:fixed;left:0;right:0;bottom:calc(var(--barH,104px) + 6px);text-align:center;font-family:var(--mono);
+    font-size:10.5px;letter-spacing:.12em;color:var(--ice);opacity:.85;text-transform:uppercase;pointer-events:none;
+    padding-left:var(--gl);padding-right:var(--gr);transition:opacity .25s;text-shadow:0 0 4px rgba(0,0,0,.9)}
+
+  #info{position:fixed;left:var(--gl);right:calc(var(--gr) + 52px);bottom:calc(var(--barH,104px) + 30px);max-width:420px;
+    padding:12px 14px;background:var(--panel);border:1px solid var(--line);-webkit-backdrop-filter:blur(8px);backdrop-filter:blur(8px);display:grid;gap:7px}
+  .ihead{display:flex;align-items:center;gap:10px;justify-content:space-between}
+  #iName{font-weight:700;font-size:16px;letter-spacing:.08em;color:var(--ice)}
+  #iState{font-family:var(--mono);font-size:10px;letter-spacing:.14em;text-transform:uppercase;padding:2px 7px;border:1px solid var(--cyan);color:var(--cyan)}
+  #iState.off{border-color:var(--amber);color:var(--amber)}
+  #info p{margin:0;font-family:var(--mono);font-size:12px;line-height:1.45;color:#c7e9f1}
+  #iFact{color:var(--mute)!important}
+  #iDeps{color:var(--amber)!important}
+  .iact{display:flex;gap:8px}
+
+  button{font:inherit;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);
+    background:rgba(2,6,12,.6);border:1px solid rgba(95,232,255,.6);padding:9px 11px;border-radius:2px;cursor:pointer;
+    -webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px);touch-action:manipulation}
+  button[aria-pressed="true"]{background:rgba(95,232,255,.22);color:var(--ice)}
+  button:disabled{opacity:.35;cursor:default}
+  button:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
+  button.hhover{border-color:var(--amber);color:var(--amber);box-shadow:0 0 12px rgba(255,179,71,.5)}
+  button.primary{background:var(--cyan);color:var(--ink);border-color:var(--cyan);font-weight:700}
+  #bStart.on{background:var(--amber);border-color:var(--amber);color:var(--ink)}
+
+  #bar{position:fixed;left:0;right:0;bottom:0;display:grid;gap:6px;justify-items:center;
+    padding:8px var(--gr) calc(env(safe-area-inset-bottom,0px) + 10px) var(--gl);transition:opacity .25s;
+    background:linear-gradient(to top,rgba(2,6,12,.75),rgba(2,6,12,0))}
+  #bar .row{display:flex;gap:6px;flex-wrap:wrap;justify-content:center}
+  #bar .main button{font-size:12px;padding:10px 12px}
+  #bar .sub button{font-size:10px;padding:7px 9px}
+  body:not(.hands) .cam-only{display:none}
+  body.clean .hud,body.clean #bar,body.clean #tip,body.clean #throttle,body.clean #info{opacity:0;pointer-events:none}
+  #showUi{position:fixed;right:var(--gr);bottom:calc(env(safe-area-inset-bottom,0px) + 12px);opacity:.55}
+
+  .overlay{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(120% 80% at 50% 35%,#0b2233 0%,var(--ink) 70%);
+    padding:24px var(--gr) 24px var(--gl);z-index:5;overflow:auto}
+  .overlay .box{max-width:380px;display:grid;gap:16px}
+  .overlay h1{margin:0;font-size:40px;line-height:1;letter-spacing:.08em;font-weight:700;color:var(--ice);text-shadow:0 0 18px rgba(95,232,255,.7)}
+  .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--cyan);text-transform:uppercase}
+  .overlay ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;font-family:var(--mono);font-size:13px;line-height:1.45;color:#b8dfe8}
+  .overlay ol li{display:grid;grid-template-columns:70px 1fr;gap:10px}
+  .overlay ol span{color:var(--cyan);letter-spacing:.12em}
+  .overlay .go{display:grid;gap:8px}
+  .overlay .go button{font-family:var(--display);font-weight:700;font-size:15px;letter-spacing:.18em;padding:15px 18px}
+  .overlay .go button.primary{box-shadow:0 0 24px rgba(95,232,255,.55)}
+  #msg{font-family:var(--mono);font-size:12px;color:var(--amber);min-height:1em;line-height:1.4}
+  #done{background:rgba(2,6,12,.82)}
+  #done h2{margin:0;font-size:44px;letter-spacing:.06em;color:var(--amber);text-shadow:0 0 18px rgba(255,179,71,.6);font-variant-numeric:tabular-nums}
+  #done p{margin:0;font-family:var(--mono);font-size:13px;line-height:1.5;color:#c7e9f1}
+  #done .row{display:flex;gap:8px;flex-wrap:wrap}
+
+  @media (max-width:420px){
+    #rpm{font-size:20px}
+    #tr{font-size:10px}
+    .sk{min-width:38px;font-size:8px}
+    #note{max-width:200px}
+    #chal{top:calc(env(safe-area-inset-top,0px) + 150px)}
+  }
+  @media (prefers-reduced-motion:reduce){#cam,#toast,.hud,#bar{transition:none}}
+</style>
+</head>
+<body>
+<div id="stage">
+  <video id="cam" playsinline muted autoplay></video>
+  <canvas id="gl" aria-label="3D diesel engine. Tap a part to select it."></canvas>
+  <canvas id="fx"></canvas>
+</div>
+
+<div class="hud" id="tl">
+  <b>DIESEL CORE</b>
+  <span id="status">Standby</span>
+  <div class="strokes" aria-label="Stroke of each cylinder">
+    <div class="sk track" data-k="in"><b>1</b><span>Intake</span></div>
+    <div class="sk" data-k="in"><b>2</b><span>Intake</span></div>
+    <div class="sk" data-k="in"><b>3</b><span>Intake</span></div>
+    <div class="sk" data-k="in"><b>4</b><span>Intake</span></div>
+  </div>
+  <div id="note">Firing order 1-3-4-2</div>
+</div>
+
+<div class="hud" id="tr">
+  <span>Engine speed</span>
+  <span id="rpm">0 rpm</span>
+  <div class="row"><span>Coolant</span><span id="temp">28 °C</span></div>
+  <div class="row"><span>Boost</span><span id="boost">0.00 bar</span></div>
+  <div class="row"><span>Load</span><span id="load">15 %</span></div>
+  <div class="row"><span>Parts</span><span id="fitted">13/13</span></div>
+</div>
+
+<div id="throttle">
+  <span>Throttle</span>
+  <div id="thrTrack" tabindex="0" role="slider" aria-label="Throttle" aria-valuemin="0" aria-valuemax="100" aria-valuenow="15"><div id="thrFill"></div></div>
+  <span id="thrVal">15%</span>
+</div>
+
+<div id="chal" hidden></div>
+<div id="toast" role="status" aria-live="polite"></div>
+<div id="tip">Tap a part to select it · drag empty space to turn</div>
+
+<div id="info" hidden>
+  <div class="ihead"><span id="iName"></span><span id="iState"></span></div>
+  <p id="iRole"></p>
+  <p id="iFact"></p>
+  <p id="iDeps" hidden></p>
+  <div class="iact"><button id="iAct" type="button">Remove part</button><button id="iClose" type="button">Close</button></div>
+</div>
+
+<div id="bar">
+  <div class="row main">
+    <button id="bStart" type="button">Start engine</button>
+    <button id="bExplode" type="button">Explode</button>
+    <button id="bAssemble" type="button">Assemble</button>
+    <button id="bChallenge" type="button">Challenge</button>
+  </div>
+  <div class="row sub">
+    <button id="bSlow" type="button" aria-pressed="false">Slow-mo</button>
+    <button id="bSound" type="button" aria-pressed="true">Sound</button>
+    <button id="bMode" type="button" aria-pressed="false">Hand tracking</button>
+    <button id="bDim" class="cam-only" type="button" aria-pressed="false">Dim</button>
+    <button id="bMirror" class="cam-only" type="button" aria-pressed="true">Mirror</button>
+    <button id="bFlip" class="cam-only" type="button">Flip cam</button>
+    <button id="bClean" type="button">Hide UI</button>
+  </div>
+</div>
+<button id="showUi" type="button" hidden>Show UI</button>
+
+<div id="done" class="overlay" hidden>
+  <div class="box">
+    <div class="eyebrow">Engine rebuilt</div>
+    <h2 id="dTime">0:00.0</h2>
+    <p id="dInfo"></p>
+    <div class="row">
+      <button id="dStart" class="primary" type="button">Start engine</button>
+      <button id="dAgain" type="button">Try again</button>
+      <button id="dClose" type="button">Close</button>
+    </div>
+  </div>
+</div>
+
+<div id="intro" class="overlay">
+  <div class="box">
+    <div class="eyebrow">Aerobotix · hand-tracked diesel engine</div>
+    <h1>DIESEL CORE</h1>
+    <ol>
+      <li><span>PINCH</span>Pinch a part with thumb and index finger to pull it off the engine.</li>
+      <li><span>FIT</span>Carry it back to its place and let go. Parts only fit in the right workshop order.</li>
+      <li><span>SPREAD</span>Pull two open hands apart fast to explode the engine. Bring them together to rebuild.</li>
+      <li><span>REV</span>Start the engine, then pinch the throttle bar on the right and slide it up.</li>
+    </ol>
+    <div class="go">
+      <button id="goHands" class="primary" type="button">Start with hands</button>
+      <button id="goTouch" type="button">Touch only</button>
+    </div>
+    <div id="msg"></div>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+
+const $ = s => document.querySelector(s);
+const D2R = Math.PI/180;
+const video = $('#cam'), glc = $('#gl'), fxc = $('#fx'), ctx = fxc.getContext('2d');
+const statusEl = $('#status'), rpmEl = $('#rpm'), tempEl = $('#temp'), boostEl = $('#boost'), loadEl = $('#load'), fitEl = $('#fitted');
+const tipEl = $('#tip'), noteEl = $('#note'), chalEl = $('#chal'), toastEl = $('#toast');
+const thrTrack = $('#thrTrack'), thrFill = $('#thrFill'), thrVal = $('#thrVal');
+const strokeEls = [...document.querySelectorAll('.sk')];
+
+// ---------- renderer & scene ----------
+const renderer = new THREE.WebGLRenderer({canvas: glc, alpha: true, antialias: true});
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const FOV = 40;
+const camera = new THREE.PerspectiveCamera(FOV, 1, 0.1, 200);
+let W = 1, H = 1, DPR = 1;
+function resize(){
+  W = innerWidth; H = innerHeight; DPR = Math.min(devicePixelRatio || 1, 2);
+  renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
+  fxc.width = Math.round(W*DPR); fxc.height = Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+  camera.aspect = W/H; camera.updateProjectionMatrix();
+}
+addEventListener('resize', resize); resize();
+
+scene.add(new THREE.HemisphereLight(0xcff6ff, 0x06121c, 1.2));
+const sun = new THREE.DirectionalLight(0xffffff, 1.1); sun.position.set(5, 9, 7); scene.add(sun);
+const grid = new THREE.GridHelper(30, 60, 0x1f5a70, 0x0c2532);
+grid.position.y = -3.6; grid.material.transparent = true; grid.material.opacity = .55; grid.material.depthWrite = false; scene.add(grid);
+const rig = new THREE.Group(); scene.add(rig);
+
+const COL = {cyan:0x5fe8ff, ice:0xd9fbff, blue:0x2a7dff, amber:0xffb347, coral:0xff7a59, lime:0xb6f36b, red:0xff5a5a};
+const CYAN = new THREE.Color(COL.cyan), ICE = new THREE.Color(COL.ice), AMBER = new THREE.Color(COL.amber), RED = new THREE.Color(COL.red);
+const GREY = new THREE.Color(0x9aa6b8);
+const v = (x,y,z) => new THREE.Vector3(x,y,z);
+const box = (w,h,d) => new THREE.BoxGeometry(w,h,d);
+function cylX(r, len, seg=24){ const g = new THREE.CylinderGeometry(r, r, len, seg); g.rotateZ(Math.PI/2); return g; }
+function cylY(r, len, seg=24, open=false){ return new THREE.CylinderGeometry(r, r, len, seg, 1, open); }
+function torusX(R, r, rs=8, ts=28){ const g = new THREE.TorusGeometry(R, r, rs, ts); g.rotateY(Math.PI/2); return g; }
+function torusY(R, r, rs=6, ts=28){ const g = new THREE.TorusGeometry(R, r, rs, ts); g.rotateX(Math.PI/2); return g; }
+function tube(pts, r, closed=false, seg=48){ return new THREE.TubeGeometry(new THREE.CatmullRomCurve3(pts, closed), seg, r, 6, closed); }
+
+// ---------- parts ----------
+const parts = [], byId = {}, pickables = [];
+function makeFill(c){ return new THREE.MeshPhongMaterial({color:c, emissive:c, emissiveIntensity:.22, transparent:true, opacity:.16, depthWrite:false, side:THREE.DoubleSide, shininess:70}); }
+function makeEdge(c){ return new THREE.LineBasicMaterial({color:c, transparent:true, opacity:.8, blending:THREE.AdditiveBlending, depthWrite:false}); }
+function part(id, o){
+  const group = new THREE.Group(); rig.add(group);
+  const p = Object.assign({id, group, fill:makeFill(o.color), edge:makeEdge(o.color), base:new THREE.Color(o.color),
+    fitted:true, dragging:false, wasFitted:false, target:v(0,0,0), pending:null, delay:0, flash:0, center:v(0,0,0), needs:[], fixed:false, ex:v(0,0,0)}, o);
+  parts.push(p); byId[id] = p; return p;
+}
+function add(p, geo, pos, rot, parent){
+  const m = new THREE.Mesh(geo, p.fill); m.userData.part = p;
+  m.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 24), p.edge));
+  if(pos) m.position.copy(pos);
+  if(rot) m.rotation.set(rot[0]||0, rot[1]||0, rot[2]||0);
+  (parent || p.group).add(m); pickables.push(m); return m;
+}
+function grp(parent, pos){ const g = new THREE.Group(); if(pos) g.position.copy(pos); parent.add(g); return g; }
+function ticks(p, parent, r, n, len){
+  const pts = [];
+  for(let i=0;i<n;i++){ const a = i/n*Math.PI*2; pts.push(0, Math.cos(a)*r, Math.sin(a)*r, 0, Math.cos(a)*(r+len), Math.sin(a)*(r+len)); }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts, 3));
+  parent.add(new THREE.LineSegments(g, p.edge));
+}
+
+// geometry constants (engine runs along x; front is +x)
+const XS = [-1.35, -0.45, 0.45, 1.35];   // cylinder centres
+const OFF = [0, 540, 180, 360];          // cycle offset per cylinder, firing order 1-3-4-2
+const R = .28, L = .95, CY = -.9, DECK = .62, CAMY = 1.24, CAMZ = .22, FRONT = 2.12;
+
+// Cylinder block (fixed base)
+const block = part('block', {name:'Cylinder block', short:'cylinder block', color:COL.blue, fixed:true,
+  role:'The backbone of the engine. It holds the four cylinder bores, the coolant passages and the crankshaft bearings. Every other part bolts onto it.',
+  fact:'Diesel blocks are heavier than petrol blocks because they must hold much higher combustion pressure.'});
+add(block, box(3.8, 1.72, 1.3), v(0, -.24, 0));
+XS.forEach(x => add(block, cylY(.33, 1.0, 28, true), v(x, .12, 0)));
+[[-1.2,.76],[1.2,.76],[-1.2,-.76],[1.2,-.76]].forEach(([x,z]) => add(block, box(.32,.22,.2), v(x,-.62,z)));
+add(block, cylY(.15, .36, 20), v(-.9, -.62, .83));
+add(block, cylX(.16, .55, 20), v(-1.6, -.86, -.84));
+add(block, cylX(.17, .14, 20), v(1.97, .12, .36));
+
+// Crankshaft
+const crank = part('crank', {name:'Crankshaft', short:'crankshaft', color:COL.cyan, ex:v(0,-1.3,-2.7),
+  role:'Turns the up-and-down push of the pistons into rotation. Heavy counterweights balance each throw.',
+  fact:'Pistons 1 and 4 move together, 2 and 3 move opposite. That is why the firing order is 1-3-4-2.'});
+const crankSpin = grp(crank.group, v(0, CY, 0));
+[-1.8,-.9,0,.9,1.8].forEach(x => add(crank, cylX(.1, .3, 16), v(x,0,0), null, crankSpin));
+add(crank, cylX(.08, .35, 16), v(2.0,0,0), null, crankSpin);
+add(crank, cylX(.2, .08, 24), v(-1.98,0,0), null, crankSpin);
+XS.forEach((x,i) => {
+  const a = -OFF[i]*D2R;
+  add(crank, cylX(.09, .3, 16), v(x, R*Math.cos(a), R*Math.sin(a)), null, crankSpin);
+  for(const s of [-1,1]){
+    const web = grp(crankSpin, v(x+s*.19, 0, 0)); web.rotation.x = a;
+    add(crank, box(.08, .46, .3), v(0, .13, 0), null, web);
+    add(crank, box(.08, .22, .56), v(0, -.2, 0), null, web);
+  }
+});
+
+// Pistons & connecting rods
+const pistons = part('pistons', {name:'Pistons & rods', short:'pistons', color:COL.ice, ex:v(0,-.3,2.8), needs:['crank'],
+  role:'Pistons seal each cylinder with rings and take the force of combustion. Connecting rods link them to the crankshaft.',
+  fact:'A diesel piston has a bowl in its crown where the fuel spray swirls and burns.'});
+const pistonObjs = XS.map(x => {
+  const head = grp(pistons.group, v(x, 0, 0));
+  add(pistons, cylY(.3, .36, 28), v(0, .02, 0), null, head);
+  add(pistons, torusY(.302, .012, 4, 28), v(0, .15, 0), null, head);
+  add(pistons, torusY(.302, .012, 4, 28), v(0, .1, 0), null, head);
+  add(pistons, torusY(.13, .025, 6, 20), v(0, .2, 0), null, head);
+  add(pistons, cylX(.06, .42, 12), v(0, 0, 0), null, head);
+  const rod = add(pistons, box(.1, L, .12), v(x, 0, 0));
+  const big = add(pistons, torusX(.12, .04, 6, 16), v(x, 0, 0));
+  return {head, rod, big, top:0};
+});
+
+// Oil sump
+const oilPan = part('oilPan', {name:'Oil sump', short:'oil sump', color:0x3d8cff, ex:v(0,-1.6,0), needs:['crank','pistons'],
+  role:'Holds the engine oil. The oil pump draws from here and pushes oil to every bearing.',
+  fact:'Oil also cools the underside of the pistons, which get very hot in a diesel.'});
+add(oilPan, box(3.8, .04, 1.3), v(0, -1.11, 0));
+add(oilPan, box(3.6, .45, 1.15), v(0, -1.35, 0));
+add(oilPan, box(1.4, .35, 1.0), v(-1.0, -1.74, 0));
+add(oilPan, cylY(.06, .08, 12), v(-1.0, -1.95, .2));
+
+// Flywheel
+const flywheel = part('flywheel', {name:'Flywheel', short:'flywheel', color:COL.cyan, ex:v(-1.6,0,0), needs:['crank'],
+  role:'A heavy disc that stores energy between power strokes, so rotation stays smooth. The clutch bolts to it.',
+  fact:'The starter motor turns the engine by meshing with the toothed ring on its edge.'});
+const flySpin = grp(flywheel.group, v(-FRONT, CY, 0));
+add(flywheel, cylX(.8, .12, 48), v(0,0,0), null, flySpin);
+add(flywheel, cylX(.22, .2, 20), v(0,0,0), null, flySpin);
+add(flywheel, box(.13, .06, .3), v(-.02, .55, 0), null, flySpin);
+ticks(flywheel, flySpin, .8, 90, .07);
+
+// Cylinder head with valves
+const head = part('head', {name:'Cylinder head', short:'cylinder head', color:0x46c3ff, ex:v(0,1.0,0), needs:['pistons'],
+  role:'Closes the top of the cylinders. It carries the intake and exhaust valves, the injector seats and coolant passages.',
+  fact:'A diesel squeezes air about 16 to 20 times. A petrol engine manages only about 10.'});
+add(head, box(3.8, .5, 1.22), v(0, .87, 0));
+const valves = [];
+XS.forEach((x,i) => {
+  for(const [type,z] of [['in',.2],['ex',-.2]]){
+    const g = grp(head.group, v(x, 0, z));
+    add(head, cylY(.028, .5, 8), v(0, .9, 0), null, g);
+    add(head, cylY(.13, .03, 20), v(0, .655, 0), null, g);
+    valves.push({i, type, g});
+  }
+  add(head, box(.26, .18, .06), v(x, .9, .63));
+  add(head, box(.26, .18, .06), v(x, .9, -.63));
+});
+
+// Camshafts
+const camshaft = part('camshaft', {name:'Camshafts', short:'camshafts', color:COL.ice, ex:v(0,1.75,0), needs:['head'],
+  role:'Each lobe pushes a valve open at exactly the right moment. One shaft works the intake valves, the other the exhaust.',
+  fact:'The camshafts turn at half the crankshaft speed, because each valve opens once every two turns.'});
+const camSpins = [CAMZ, -CAMZ].map((z, k) => {
+  const s = grp(camshaft.group, v(0, CAMY, z));
+  add(camshaft, cylX(.055, 3.7, 12), v(0,0,0), null, s);
+  [-1.8,-.9,0,.9,1.8].forEach(x => add(camshaft, cylX(.08, .1, 16), v(x,0,0), null, s));
+  XS.forEach((x,i) => {
+    add(camshaft, cylX(.095, .1, 18), v(x,0,0), null, s);
+    const beta = -(OFF[i] + (k===0 ? 90 : 630))*D2R;
+    const nose = grp(s, v(x,0,0)); nose.rotation.x = beta;
+    add(camshaft, box(.1, .12, .12), v(0, -.09, 0), null, nose);
+  });
+  return s;
+});
+
+// Timing gears & belt
+const timing = part('timing', {name:'Timing belt & gears', short:'timing belt', color:0x9ad7ff, ex:v(1.7,0,0), needs:['crank','camshaft'],
+  role:'Links the crankshaft to the camshafts with a 2:1 ratio, so the valves stay in step with the pistons.',
+  fact:'If the timing slips on many engines, the valves can strike the pistons.'});
+const crankPulley = grp(timing.group, v(FRONT, CY, 0));
+add(timing, cylX(.11, .08, 18), v(0,0,0), null, crankPulley);
+add(timing, box(.06, .2, .03), v(0,0,0), null, crankPulley);
+const camPulleys = [CAMZ, -CAMZ].map(z => {
+  const g = grp(timing.group, v(FRONT, CAMY, z));
+  add(timing, cylX(.2, .06, 28), v(0,0,0), null, g);
+  add(timing, box(.05, .38, .04), v(0,0,0), null, g);
+  add(timing, box(.05, .04, .38), v(0,0,0), null, g);
+  return g;
+});
+add(timing, cylX(.07, .06, 14), v(FRONT, .25, .34));
+add(timing, tube([v(FRONT,CY-.12,0), v(FRONT,CY,.13), v(FRONT,.25,.42), v(FRONT,CAMY,.44), v(FRONT,CAMY+.21,.22), v(FRONT,CAMY+.22,0),
+  v(FRONT,CAMY+.21,-.22), v(FRONT,CAMY,-.44), v(FRONT,CY,-.13)], .022, true, 80));
+
+// Valve cover
+const valveCover = part('valveCover', {name:'Valve cover', short:'valve cover', color:COL.cyan, ex:v(0,2.4,0), needs:['camshaft'],
+  role:'Seals the top of the head and keeps the oil that splashes around the camshafts inside.',
+  fact:'It carries the oil filler cap. Oil is topped up here.'});
+add(valveCover, box(3.7, .3, 1.1), v(0, 1.29, 0));
+add(valveCover, cylY(.1, .1, 16), v(-1.2, 1.49, .3));
+
+// Injectors
+const injectors = part('injectors', {name:'Fuel injectors', short:'injectors', color:COL.lime, ex:v(0,3.4,0), needs:['valveCover'],
+  role:'Spray a fine mist of diesel straight into each cylinder at the end of the compression stroke.',
+  fact:'A diesel has no spark plugs. Air heated by compression to over 500 °C ignites the fuel by itself.'});
+XS.forEach(x => {
+  add(injectors, cylY(.035, .7, 10), v(x, 1.01, 0));
+  add(injectors, cylY(.07, .3, 14), v(x, 1.5, 0));
+  add(injectors, box(.12, .08, .12), v(x, 1.69, 0));
+});
+
+// Common rail
+const rail = part('rail', {name:'Common rail', short:'common rail', color:COL.lime, ex:v(0,4.2,.9), needs:['injectors'],
+  role:'A thick pipe that stores fuel at very high pressure from the high-pressure pump and feeds every injector.',
+  fact:'Rail pressure on modern diesels reaches about 2,000 bar. The engine computer opens each injector electrically.'});
+add(rail, cylX(.07, 3.2, 16), v(0, 1.86, .32));
+add(rail, cylX(.05, .12, 12), v(1.66, 1.86, .32));
+XS.forEach(x => add(rail, tube([v(x,1.86,.27), v(x,1.84,.13), v(x,1.74,.05)], .02, false, 12)));
+add(rail, tube([v(1.6,1.86,.32), v(2.35,1.5,.6), v(2.35,.25,.7)], .025, false, 24));
+
+// Intake manifold
+const intake = part('intake', {name:'Intake manifold', short:'intake manifold', color:0x7fd8ff, ex:v(0,.3,1.5), needs:['head'],
+  role:'Carries fresh air from the turbocharger to each cylinder.',
+  fact:'A diesel has no throttle valve in the air path. Power is set by how much fuel is injected.'});
+add(intake, cylX(.19, 3.4, 20), v(0, 1.0, 1.05));
+XS.forEach(x => add(intake, box(.22, .2, .42), v(x, .9, .82)));
+add(intake, cylX(.15, .2, 18), v(1.8, 1.0, 1.05));
+
+// Exhaust manifold
+const exhaust = part('exhaust', {name:'Exhaust manifold', short:'exhaust manifold', color:COL.coral, ex:v(0,.3,-1.5), needs:['head'],
+  role:'Collects hot exhaust gas from every cylinder and leads it to the turbocharger.',
+  fact:'Under full load it can glow dull red, at around 600 to 700 °C.'});
+XS.forEach(x => add(exhaust, box(.2, .18, .42), v(x, .87, -.82)));
+add(exhaust, cylX(.17, 3.0, 20), v(-.1, .82, -1.05));
+add(exhaust, tube([v(1.15,.82,-1.05), v(1.15,.6,-1.15), v(1.15,.45,-1.32)], .1, false, 16));
+
+// Turbocharger
+const turbo = part('turbo', {name:'Turbocharger', short:'turbocharger', color:0xff9f6b, ex:v(.6,-.3,-2.4), needs:['exhaust','intake'],
+  role:'Exhaust gas spins a turbine. On the same shaft a compressor forces extra air into the intake, so more fuel can burn.',
+  fact:'A small turbo shaft can spin at well over 100,000 rpm.'});
+const TB = v(1.15, .42, -1.5), TC = v(1.72, .42, -1.5);
+add(turbo, torusX(.2, .13, 8, 24), TB);
+add(turbo, cylX(.1, .3, 14), v(1.43, .42, -1.5));
+add(turbo, torusX(.22, .14, 8, 24), TC);
+add(turbo, cylX(.16, .22, 18), v(1.96, .42, -1.5));
+add(turbo, cylX(.12, .4, 16), v(.85, .42, -1.5));
+const turbineWheel = grp(turbo.group, TB.clone()), compWheel = grp(turbo.group, TC.clone());
+for(const w of [turbineWheel, compWheel]) for(let k=0;k<6;k++){ const b = grp(w); b.rotation.x = k/6*Math.PI; add(turbo, box(.03, .3, .04), v(0,0,0), null, b); }
+add(turbo, tube([v(1.72,.62,-1.5), v(2.15,.92,-1.35), v(2.5,1.05,-.6), v(2.5,1.05,.6), v(2.15,1.0,1.05), v(1.92,1.0,1.05)], .085, false, 48));
+const TURBO_OUT = v(.62, .42, -1.5);
+
+const movable = parts.filter(p => !p.fixed);
+const ORDER = ['crank','pistons','oilPan','flywheel','head','camshaft','timing','valveCover','injectors','rail','intake','exhaust','turbo'];
+
+// combustion glow inside each cylinder
+const chargeGeo = cylY(.29, 1, 24); chargeGeo.translate(0, .5, 0);
+const charges = XS.map(x => {
+  const m = new THREE.Mesh(chargeGeo, new THREE.MeshBasicMaterial({color:COL.cyan, transparent:true, opacity:0, blending:THREE.AdditiveBlending, depthWrite:false}));
+  m.position.x = x; rig.add(m); return m;
+});
+
+// ---------- particles ----------
+const GLOW = (() => { const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d'), r = g.createRadialGradient(32,32,0,32,32,32);
+  r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.4,'rgba(255,255,255,.35)'); r.addColorStop(1,'rgba(255,255,255,0)'); g.fillStyle = r; g.fillRect(0,0,64,64);
+  return new THREE.CanvasTexture(c); })();
+const MAXP = 900;
+const pPos = new Float32Array(MAXP*3), pCol = new Float32Array(MAXP*3), pSize = new Float32Array(MAXP), pAlpha = new Float32Array(MAXP);
+const pVel = new Float32Array(MAXP*3), pLife = new Float32Array(MAXP), pMax = new Float32Array(MAXP), pBase = new Float32Array(MAXP);
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3));
+pGeo.setAttribute('color', new THREE.BufferAttribute(pCol,3));
+pGeo.setAttribute('size', new THREE.BufferAttribute(pSize,1));
+pGeo.setAttribute('alpha', new THREE.BufferAttribute(pAlpha,1));
+const pMat = new THREE.ShaderMaterial({
+  uniforms:{scale:{value:300}, map:{value:GLOW}},
+  vertexShader:`attribute float size; attribute float alpha; attribute vec3 color; varying vec3 vC; varying float vA; uniform float scale;
+    void main(){ vC=color; vA=alpha; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=size*scale/max(0.5,-mv.z); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader:`uniform sampler2D map; varying vec3 vC; varying float vA; void main(){ float a=texture2D(map,gl_PointCoord).a; gl_FragColor=vec4(vC*(1.0+a), a*vA); }`,
+  transparent:true, blending:THREE.AdditiveBlending, depthWrite:false
+});
+const points = new THREE.Points(pGeo, pMat); points.frustumCulled = false; scene.add(points);
+let pHead = 0;
+function spawn(x,y,z, vx,vy,vz, life, size, col){
+  const i = pHead; pHead = (pHead+1)%MAXP;
+  pPos[i*3]=x; pPos[i*3+1]=y; pPos[i*3+2]=z; pVel[i*3]=vx; pVel[i*3+1]=vy; pVel[i*3+2]=vz;
+  pLife[i]=life; pMax[i]=life; pBase[i]=size; pCol[i*3]=col.r; pCol[i*3+1]=col.g; pCol[i*3+2]=col.b;
+}
+function stepParticles(dt){
+  for(let i=0;i<MAXP;i++){
+    if(pLife[i]<=0){ pAlpha[i]=0; pSize[i]=0; continue; }
+    pLife[i]-=dt; const k = Math.max(0, pLife[i]/pMax[i]);
+    pPos[i*3]+=pVel[i*3]*dt; pPos[i*3+1]+=pVel[i*3+1]*dt; pPos[i*3+2]+=pVel[i*3+2]*dt;
+    pVel[i*3]*=.95; pVel[i*3+1]*=.95; pVel[i*3+2]*=.95;
+    pAlpha[i]=k; pSize[i]=pBase[i]*(.4+.6*k);
+  }
+  for(const n of ['position','color','size','alpha']) pGeo.attributes[n].needsUpdate = true;
+}
+function burst(p, n, speed, col, size=.2, life=.6){
+  for(let i=0;i<n;i++){
+    const u=Math.random()*2-1, th=Math.random()*6.283, s=Math.sqrt(1-u*u), sp=speed*(.4+Math.random()*.6);
+    spawn(p.x,p.y,p.z, Math.cos(th)*s*sp, Math.sin(th)*s*sp, u*sp, life*(.6+Math.random()*.6), size*(.6+Math.random()*.8), Math.random()<.3?ICE:col);
+  }
+}
+
+// ---------- audio ----------
+let AC = null, master = null, noiseBuf = null, soundOn = true;
+const snd = {};
+function initAudio(){
+  if(AC) return;
+  try{
+    AC = new (window.AudioContext||window.webkitAudioContext)();
+    master = AC.createGain(); master.gain.value = .8; master.connect(AC.destination);
+    noiseBuf = AC.createBuffer(1, AC.sampleRate*2, AC.sampleRate);
+    const d = noiseBuf.getChannelData(0); for(let i=0;i<d.length;i++) d[i] = Math.random()*2-1;
+    snd.out = AC.createGain(); snd.out.gain.value = 0; snd.out.connect(master);
+    snd.saw = AC.createOscillator(); snd.saw.type = 'sawtooth';
+    snd.lp = AC.createBiquadFilter(); snd.lp.type = 'lowpass'; snd.lp.frequency.value = 400;
+    const sawG = AC.createGain(); sawG.gain.value = .55; snd.saw.connect(snd.lp); snd.lp.connect(sawG); sawG.connect(snd.out);
+    snd.noise = AC.createBufferSource(); snd.noise.buffer = noiseBuf; snd.noise.loop = true;
+    const bp = AC.createBiquadFilter(); bp.type = 'bandpass'; bp.frequency.value = 1500; bp.Q.value = .9;
+    snd.am = AC.createGain(); snd.am.gain.value = .5;
+    snd.mod = AC.createOscillator(); snd.mod.type = 'square';
+    const depth = AC.createGain(); depth.gain.value = .5; snd.mod.connect(depth); depth.connect(snd.am.gain);
+    const nG = AC.createGain(); nG.gain.value = .45; snd.noise.connect(bp); bp.connect(snd.am); snd.am.connect(nG); nG.connect(snd.out);
+    snd.turbo = AC.createOscillator(); snd.turbo.type = 'sine'; snd.tg = AC.createGain(); snd.tg.gain.value = 0; snd.turbo.connect(snd.tg); snd.tg.connect(master);
+    snd.saw.start(); snd.mod.start(); snd.noise.start(); snd.turbo.start();
+  }catch(e){ AC = null; }
+}
+function tone(type, f0, f1, dur, vol){
+  if(!AC || !soundOn) return; const t = AC.currentTime, o = AC.createOscillator(), g = AC.createGain();
+  o.type = type; o.frequency.setValueAtTime(f0, t); o.frequency.exponentialRampToValueAtTime(f1, t+dur);
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t+dur);
+  o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+.05);
+}
+function hiss(dur, f, vol){
+  if(!AC || !soundOn) return; const t = AC.currentTime, n = AC.createBufferSource(), b = AC.createBiquadFilter(), g = AC.createGain();
+  n.buffer = noiseBuf; b.type = 'bandpass'; b.frequency.value = f; b.Q.value = 1;
+  g.gain.setValueAtTime(vol, t); g.gain.exponentialRampToValueAtTime(.001, t+dur);
+  n.connect(b); b.connect(g); g.connect(master); n.start(t); n.stop(t+dur+.05);
+}
+const sClunk = () => { tone('sine', 190, 55, .28, .55); hiss(.07, 2000, .3); };
+const sClink = () => { tone('triangle', 900, 480, .14, .2); hiss(.05, 4200, .15); };
+const sBuzz = () => tone('square', 140, 118, .22, .1);
+const sWhoosh = () => { hiss(.6, 900, .45); tone('sine', 300, 90, .5, .15); };
+const sBeep = () => tone('sine', 880, 880, .12, .08);
+
+// ---------- UI helpers ----------
+let toastTimer = 0;
+function toast(msg, bad){ toastEl.textContent = msg; toastEl.classList.toggle('bad', !!bad); toastEl.classList.add('on'); clearTimeout(toastTimer); toastTimer = setTimeout(() => toastEl.classList.remove('on'), 2400); }
+const names = list => { const n = list.map(p => p.short); return n.length < 2 ? n.join('') : n.slice(0,-1).join(', ') + ' and ' + n[n.length-1]; };
+const setText = (el, t) => { if(el.textContent !== t) el.textContent = t; };
+function fmt(s){ const m = Math.floor(s/60); return m + ':' + (s - m*60).toFixed(1).padStart(4, '0'); }
+
+// ---------- engine simulation ----------
+const eng = {state:'off', t:0, rpm:0, thr:.15, temp:28, theta:0, boost:0};
+let slow = false, turboAngle = 0;
+const prevC = [0,0,0,0];
+const STROKE = [
+  {k:'in', name:'Intake',   desc:'piston moves down and draws in fresh air only. No fuel yet.'},
+  {k:'co', name:'Compress', desc:'valves shut and the piston squeezes the air hard, heating it past 500 °C.'},
+  {k:'po', name:'Power',    desc:'the injector sprays diesel into the hot air. It ignites by itself and drives the piston down.'},
+  {k:'ex', name:'Exhaust',  desc:'the exhaust valve opens and the piston pushes burnt gas out to the turbo.'}
+];
+const cycleAngle = i => (((eng.theta - OFF[i]) % 720) + 720) % 720;
+const allFitted = () => movable.every(p => p.fitted);
+
+function startEngine(){
+  if(eng.state !== 'off'){ stopEngine(); return; }
+  const miss = movable.filter(p => !p.fitted);
+  if(miss.length){ toast(`Fit all parts to start. Missing: ${names(miss.slice(0,3))}${miss.length>3?' and more':''}.`, true); sBuzz(); return; }
+  eng.state = 'glow'; eng.t = 0; sBeep();
+}
+function stopEngine(){ eng.state = 'off'; }
+
+function stepEngine(dt){
+  eng.t += dt;
+  if(eng.state === 'glow' && eng.t > .7){ eng.state = 'crank'; eng.t = 0; }
+  else if(eng.state === 'crank' && eng.t > 1.0){ eng.state = 'run'; eng.t = 0; }
+  const run = eng.state === 'run', cr = eng.state === 'crank';
+  const target = run ? 750 + eng.thr*2850 : cr ? 220 : 0;
+  eng.rpm += (target - eng.rpm)*(1 - Math.exp(-dt*(run ? 2.2 : cr ? 4 : 1.3)));
+  if(eng.state === 'off' && eng.rpm < 4) eng.rpm = 0;
+  eng.theta = (eng.theta + eng.rpm/60*360*(slow ? .03 : .12)*dt) % 720;
+  const tt = run ? 82 + eng.thr*12 : 28;
+  eng.temp += (tt - eng.temp)*(1 - Math.exp(-dt*(run ? .12 : .04)));
+  const bt = run ? Math.max(0, (eng.rpm - 1100)/2500)*(.3 + eng.thr)*1.4 : 0;
+  eng.boost += (bt - eng.boost)*(1 - Math.exp(-dt*2));
+  turboAngle += (eng.rpm/3600)*(.4 + eng.boost)*40*dt;
+
+  if(AC && snd.out){
+    const t = AC.currentTime, f = Math.max(3, eng.rpm/60*2), on = soundOn && eng.state !== 'off' && eng.state !== 'glow';
+    snd.saw.frequency.setTargetAtTime(f, t, .05); snd.mod.frequency.setTargetAtTime(f, t, .05);
+    snd.lp.frequency.setTargetAtTime(220 + eng.rpm*.25, t, .1);
+    snd.out.gain.setTargetAtTime(on ? .2 + eng.thr*.18 : 0, t, .12);
+    snd.turbo.frequency.setTargetAtTime(900 + eng.boost*2600, t, .2);
+    snd.tg.gain.setTargetAtTime(on && run ? .006 + eng.boost*.02 : 0, t, .2);
+  }
+}
+
+function updateMechanism(){
+  const th = eng.theta*D2R;
+  crankSpin.rotation.x = th; flySpin.rotation.x = th; crankPulley.rotation.x = th;
+  camSpins.forEach(g => g.rotation.x = th/2); camPulleys.forEach(g => g.rotation.x = th/2);
+  pistonObjs.forEach((o,i) => {
+    const a = th - OFF[i]*D2R, s = R*Math.sin(a), c = R*Math.cos(a);
+    const pinY = CY + c + Math.sqrt(L*L - s*s), cy = CY + c;
+    o.head.position.y = pinY; o.big.position.set(XS[i], cy, s);
+    o.rod.position.set(XS[i], (pinY + cy)/2, s/2); o.rod.rotation.x = Math.atan2(-s, pinY - cy);
+    o.top = pinY + .2;
+  });
+  valves.forEach(vl => {
+    const c = cycleAngle(vl.i); let lift = 0;
+    if(vl.type === 'in' && c < 180) lift = Math.sin(c/180*Math.PI);
+    if(vl.type === 'ex' && c >= 540) lift = Math.sin((c-540)/180*Math.PI);
+    vl.g.position.y = -lift*.08;
+  });
+  turbineWheel.rotation.x = turboAngle; compWheel.rotation.x = turboAngle;
+}
+
+function updateCombustion(){
+  const live = eng.state !== 'off' && byId.head.fitted && byId.pistons.fitted && byId.head.group.position.length() < .05;
+  XS.forEach((x,i) => {
+    const c = cycleAngle(i), m = charges[i], k = Math.floor(c/180), f = (c % 180)/180;
+    if(!live){ m.material.opacity = 0; prevC[i] = c; return; }
+    const top = pistonObjs[i].top; m.position.y = top; m.scale.y = Math.max(.01, DECK - top);
+    if(k===0){ m.material.color.setHex(0x4c9bff); m.material.opacity = .14; }
+    else if(k===1){ m.material.color.copy(CYAN); m.material.opacity = .08 + .22*f; }
+    else if(k===2){ m.material.color.copy(AMBER); m.material.opacity = .6*(1-f) + .08; }
+    else { m.material.color.copy(GREY); m.material.opacity = .14*(1-f); }
+    if(eng.state === 'run'){
+      if(prevC[i] < 360 && c >= 360 && c - prevC[i] < 200){
+        for(let n=0;n<14;n++) spawn(x, DECK, 0, (Math.random()-.5)*1.2, -1.5-Math.random()*1.5, (Math.random()-.5)*1.2, .25, .12, AMBER);
+      }
+      if(prevC[i] < 540 && c >= 540 && c - prevC[i] < 200 && byId.turbo.fitted && Math.random() < (slow ? 1 : .5)){
+        const o = TURBO_OUT.clone().add(byId.turbo.group.position);
+        for(let n=0;n<8;n++) spawn(o.x, o.y, o.z, -1.2-Math.random(), (Math.random()-.2)*.8, (Math.random()-.5)*.6, .7, .22, GREY);
+      }
+    }
+    prevC[i] = c;
+  });
+}
+
+// ---------- selection, fitting & removal ----------
+let selected = null;
+const SNAP = .85;
+const blockers = p => movable.filter(q => q.fitted && q.needs.includes(p.id));
+const missing = p => p.needs.map(id => byId[id]).filter(q => !q.fitted);
+const partWorld = p => p.center.clone().add(p.group.position);
+function proj(w){ const q = w.clone().project(camera); return {x:(q.x*.5+.5)*W, y:(-q.y*.5+.5)*H, z:q.z}; }
+function snapState(p){ if(p.fixed || p.group.position.length() >= SNAP) return null; return missing(p).length ? 'bad' : 'ok'; }
+
+function select(p){ selected = p; renderInfo(true); }
+function canGrab(p){
+  if(!p || p.fixed) return false;
+  if(eng.state !== 'off'){ toast('Stop the engine before taking parts off.', true); sBuzz(); return false; }
+  if(p.fitted){ const bl = blockers(p); if(bl.length){ toast(`Remove the ${names(bl)} first.`, true); p.flash = 1; sBuzz(); return false; } }
+  return true;
+}
+function penalty(){ if(chal.on && performance.now() > chal.start){ chal.pen += 5; return ' +5 s'; } return ''; }
+function tryFit(p, dropped){
+  const miss = missing(p);
+  if(miss.length){
+    toast(`Fit the ${names(miss)} first.${penalty()}`, true); p.flash = 1; sBuzz();
+    if(dropped){ p.target.copy(p.ex).multiplyScalar(.75); if(p.target.length() < SNAP + .4) p.target.setLength(SNAP + .5); }
+    return false;
+  }
+  p.fitted = true; p.target.set(0,0,0); p.pending = null; p.delay = 0; sClunk();
+  burst(p.center, 40, 3, CYAN, .18, .5);
+  checkDone(); return true;
+}
+function removePart(p){ if(!canGrab(p)) return; p.fitted = false; p.pending = null; p.delay = 0; p.target.copy(p.ex); sClink(); }
+
+const plane = new THREE.Plane(), hitV = new THREE.Vector3(), camDir = new THREE.Vector3(), ndc = new THREE.Vector2(), ray = new THREE.Raycaster();
+function rayAt(sx, sy){ ndc.set(sx/W*2-1, -(sy/H)*2+1); ray.setFromCamera(ndc, camera); return ray.ray; }
+function beginDrag(p, sx, sy){
+  camera.getWorldDirection(camDir);
+  const d = {p, plane:new THREE.Plane().setFromNormalAndCoplanarPoint(camDir, partWorld(p)), delta:v(0,0,0)};
+  if(rayAt(sx, sy).intersectPlane(d.plane, hitV)) d.delta.copy(p.group.position).sub(hitV);
+  p.wasFitted = p.fitted; if(p.fitted){ p.fitted = false; sClink(); }
+  p.dragging = true; p.delay = 0; p.pending = null; return d;
+}
+function moveDrag(d, sx, sy){ if(rayAt(sx, sy).intersectPlane(d.plane, hitV)){ d.p.group.position.copy(hitV).add(d.delta); d.p.target.copy(d.p.group.position); } }
+function endDrag(d){
+  const p = d.p; if(!p.dragging) return; p.dragging = false;
+  if(p.group.position.length() < SNAP) tryFit(p, true);
+  else { p.target.copy(p.group.position); if(p.wasFitted) toast(`${p.name} removed.`); }
+  p.wasFitted = false;
+}
+function pickPart(sx, sy, tol=0){
+  rayAt(sx, sy);
+  const hits = ray.intersectObjects(pickables, false); let blockHit = null;
+  for(const h of hits){ const p = h.object.userData.part; if(p.fixed){ blockHit = blockHit || p; continue; } return p; }
+  if(tol > 0){ let best = null, bd = tol; for(const p of movable){ const s = proj(partWorld(p)); const dd = Math.hypot(s.x-sx, s.y-sy); if(s.z < 1 && dd < bd){ bd = dd; best = p; } } if(best) return best; }
+  return blockHit;
+}
+
+function releaseDrags(){
+  if(tdrag && tdrag.type === 'part') endDrag(tdrag.d); tdrag = null;
+  hs.forEach(st => { if(st.grab && st.grab.type === 'part') endDrag(st.grab.d); st.grab = null; });
+}
+function assembleAll(){
+  if(chal.on) return; releaseDrags();
+  ORDER.forEach((id, i) => { const p = byId[id]; if(p.fitted && p.group.position.lengthSq() < 1e-4) return; p.fitted = true; p.pending = v(0,0,0); p.delay = .05 + i*.09; });
+  sWhoosh(); toast('Rebuilding in workshop order.');
+}
+function explodeAll(){
+  if(chal.on) return; stopEngine(); releaseDrags();
+  [...ORDER].reverse().forEach((id, i) => { const p = byId[id]; p.fitted = false; p.pending = p.ex.clone(); p.delay = i*.06; });
+  sWhoosh();
+}
+
+// ---------- challenge ----------
+const chal = {on:false, start:0, pen:0};
+let best = null; try{ const b = parseFloat(localStorage.getItem('dieselcore.best')); if(b > 0) best = b; }catch(e){}
+function startChallenge(){
+  if(chal.on){ chal.on = false; toast('Challenge ended.'); updateButtons(); return; }
+  $('#done').hidden = true; stopEngine(); select(null); releaseDrags();
+  movable.forEach(p => {
+    p.fitted = false; const a = Math.random()*Math.PI*2, r = 2.5 + Math.random()*.8;
+    const off = v(Math.cos(a)*r, -1.8 + ORDER.indexOf(p.id)%7*.85 + Math.random()*.3, Math.sin(a)*r*.7).sub(p.center);
+    if(off.length() < SNAP + 1) off.setLength(SNAP + 1.2);
+    p.pending = off; p.delay = Math.random()*.25;
+  });
+  chal.on = true; chal.pen = 0; chal.start = performance.now() + 800;
+  sWhoosh(); toast('Rebuild the engine. A wrong order costs 5 s.'); updateButtons();
+}
+function checkDone(){
+  if(!chal.on || !allFitted()) return;
+  const time = Math.max(0, (performance.now() - chal.start)/1000) + chal.pen;
+  chal.on = false; updateButtons();
+  const isBest = best === null || time < best; if(isBest){ best = time; try{ localStorage.setItem('dieselcore.best', String(time)); }catch(e){} }
+  $('#dTime').textContent = fmt(time);
+  $('#dInfo').textContent = `Penalties: ${chal.pen} s. ${isBest ? 'New best time.' : 'Best: ' + fmt(best) + '.'} All 13 parts are back in place. Start the engine to check your work.`;
+  setTimeout(() => { $('#done').hidden = false; }, 700);
+}
+
+// ---------- info card ----------
+let infoKey = '';
+function renderInfo(force){
+  const p = selected;
+  if(!p){ $('#info').hidden = true; infoKey = ''; return; }
+  const bl = p.fitted ? blockers(p) : [], ms = p.fitted ? [] : missing(p);
+  const key = p.id + p.fitted + bl.length + ms.length + eng.state;
+  if(!force && key === infoKey) return; infoKey = key;
+  $('#info').hidden = false;
+  $('#iName').textContent = p.name;
+  const st = $('#iState'); st.textContent = p.fixed ? 'Base' : p.fitted ? 'Fitted' : 'Removed'; st.classList.toggle('off', !p.fixed && !p.fitted);
+  $('#iRole').textContent = p.role; $('#iFact').textContent = p.fact;
+  const deps = $('#iDeps');
+  if(bl.length){ deps.hidden = false; deps.textContent = `Held in place by the ${names(bl)}.`; }
+  else if(ms.length){ deps.hidden = false; deps.textContent = `Fit the ${names(ms)} before this.`; }
+  else deps.hidden = true;
+  const act = $('#iAct'); act.hidden = p.fixed; act.textContent = p.fitted ? 'Remove part' : 'Fit part';
+}
+$('#iAct').onclick = () => { const p = selected; if(!p || p.fixed) return; if(p.fitted) removePart(p); else tryFit(p, false); renderInfo(true); };
+$('#iClose').onclick = () => select(null);
+
+// ---------- camera orbit ----------
+let yaw = .7, pitch = .3, zoom = 1, expl = 0, lastInteract = 0;
+const tgt = v(0,.1,0);
+function fitDist(w, h){ const tn = Math.tan(FOV*D2R/2); return Math.max(h/(2*tn), w/(2*tn*camera.aspect)); }
+function camUpdate(dt, now){
+  const out = movable.reduce((n,p) => n + (p.group.position.length() > 1 ? 1 : 0), 0)/movable.length;
+  expl += (out - expl)*(1 - Math.exp(-dt*2.5));
+  const busy = tdrag || hs.some(s => s.grab) || movable.some(p => p.dragging);
+  if(!busy && now - lastInteract > 9000 && !reduceMotion) yaw += dt*.1;
+  const dist = THREE.MathUtils.lerp(fitDist(5.6, 4.6), fitDist(chal.on ? 10.5 : 9.8, 10), expl)*zoom;
+  tgt.set(0, THREE.MathUtils.lerp(.15, 1.35, expl), 0);
+  camera.position.set(tgt.x + dist*Math.cos(pitch)*Math.sin(yaw), tgt.y + dist*Math.sin(pitch), tgt.z + dist*Math.cos(pitch)*Math.cos(yaw));
+  camera.lookAt(tgt);
+}
+const reduceMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+const clampPitch = () => { pitch = Math.max(-.25, Math.min(1.35, pitch)); };
+
+// ---------- touch & mouse ----------
+const pointers = new Map(); let tdrag = null;
+glc.addEventListener('pointerdown', e => {
+  lastInteract = performance.now(); glc.setPointerCapture(e.pointerId); pointers.set(e.pointerId, {x:e.clientX, y:e.clientY});
+  if(pointers.size === 2){
+    if(tdrag && tdrag.type === 'part') endDrag(tdrag.d);
+    const [a,b] = [...pointers.values()]; tdrag = {type:'pinch', d0:Math.hypot(a.x-b.x, a.y-b.y), z0:zoom}; return;
+  }
+  if(pointers.size > 2) return;
+  tdrag = {type:'pending', part:pickPart(e.clientX, e.clientY), x0:e.clientX, y0:e.clientY, lx:e.clientX, ly:e.clientY};
+});
+glc.addEventListener('pointermove', e => {
+  if(!pointers.has(e.pointerId)) return; pointers.set(e.pointerId, {x:e.clientX, y:e.clientY}); lastInteract = performance.now();
+  if(!tdrag) return;
+  if(tdrag.type === 'pinch' && pointers.size === 2){
+    const [a,b] = [...pointers.values()]; const d = Math.hypot(a.x-b.x, a.y-b.y);
+    zoom = Math.max(.45, Math.min(2.2, tdrag.z0*tdrag.d0/Math.max(20, d))); return;
+  }
+  if(tdrag.type === 'pending' && Math.hypot(e.clientX-tdrag.x0, e.clientY-tdrag.y0) > 6){
+    const p = tdrag.part;
+    if(p && p === selected && !p.fixed && canGrab(p)) tdrag = {type:'part', d:beginDrag(p, tdrag.x0, tdrag.y0)};
+    else tdrag = {type:'orbit', lx:tdrag.lx, ly:tdrag.ly};
+  }
+  if(tdrag.type === 'part') moveDrag(tdrag.d, e.clientX, e.clientY);
+  else if(tdrag.type === 'orbit'){ yaw -= (e.clientX - tdrag.lx)/W*4; pitch += (e.clientY - tdrag.ly)/H*3; clampPitch(); tdrag.lx = e.clientX; tdrag.ly = e.clientY; }
+});
+function pointerEnd(e){
+  if(!pointers.has(e.pointerId)) return; pointers.delete(e.pointerId);
+  if(!tdrag) return;
+  if(tdrag.type === 'pending'){ select(tdrag.part); tdrag = null; }
+  else if(tdrag.type === 'part'){ endDrag(tdrag.d); tdrag = null; }
+  else if(tdrag.type === 'pinch'){ if(pointers.size < 2) tdrag = null; }
+  else tdrag = null;
+}
+glc.addEventListener('pointerup', pointerEnd);
+glc.addEventListener('pointercancel', pointerEnd);
+glc.addEventListener('wheel', e => { e.preventDefault(); zoom = Math.max(.45, Math.min(2.2, zoom*Math.exp(e.deltaY*.001))); lastInteract = performance.now(); }, {passive:false});
+addEventListener('keydown', e => { if(e.key === 'Escape') select(null); });
+
+// throttle
+function setThrottle(x){ eng.thr = Math.max(0, Math.min(1, x)); }
+function throttleFromY(y){ const r = thrTrack.getBoundingClientRect(); setThrottle(1 - (y - r.top)/r.height); }
+thrTrack.addEventListener('pointerdown', e => { thrTrack.setPointerCapture(e.pointerId); throttleFromY(e.clientY); });
+thrTrack.addEventListener('pointermove', e => { if(thrTrack.hasPointerCapture(e.pointerId)) throttleFromY(e.clientY); });
+thrTrack.addEventListener('keydown', e => { if(e.key === 'ArrowUp' || e.key === 'ArrowRight') setThrottle(eng.thr + .05); if(e.key === 'ArrowDown' || e.key === 'ArrowLeft') setThrottle(eng.thr - .05); });
+
+// ---------- hand tracking ----------
+let landmarker = null, handMode = false, mirror = true, facing = 'user', stream = null, visionLoading = null;
+async function loadHands(){
+  if(landmarker) return;
+  if(!visionLoading) visionLoading = (async () => {
+    const {HandLandmarker, FilesetResolver} = await import('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs');
+    const fileset = await FilesetResolver.forVisionTasks('https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/wasm');
+    const opts = d => ({baseOptions:{modelAssetPath:'https://storage.googleapis.com/mediapipe-models/hand_landmarker/hand_landmarker/float16/1/hand_landmarker.task', delegate:d},
+      runningMode:'VIDEO', numHands:2, minHandDetectionConfidence:.55, minHandPresenceConfidence:.5, minTrackingConfidence:.5});
+    try{ landmarker = await HandLandmarker.createFromOptions(fileset, opts('GPU')); }
+    catch(e){ landmarker = await HandLandmarker.createFromOptions(fileset, opts('CPU')); }
+  })().catch(e => { visionLoading = null; throw e; });
+  return visionLoading;
+}
+async function startCamera(){
+  if(stream) stream.getTracks().forEach(t => t.stop());
+  stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:facing, width:{ideal:1280}, height:{ideal:720}}});
+  video.srcObject = stream; await video.play();
+}
+async function enterHands(){
+  await loadHands(); await startCamera();
+  handMode = true; document.body.classList.add('hands'); grid.visible = false; $('#bMode').setAttribute('aria-pressed', 'true');
+}
+function enterTouch(){
+  handMode = false; if(stream){ stream.getTracks().forEach(t => t.stop()); stream = null; } video.srcObject = null;
+  document.body.classList.remove('hands'); grid.visible = true; $('#bMode').setAttribute('aria-pressed', 'false');
+  hs.forEach(st => { if(st.grab && st.grab.type === 'part') endDrag(st.grab.d); st.grab = null; st.pinch = false; });
+}
+
+function mapper(){
+  const vw = video.videoWidth||1280, vh = video.videoHeight||720, s = Math.max(W/vw, H/vh);
+  const dw = vw*s, dh = vh*s, ox = (W-dw)/2, oy = (H-dh)/2;
+  return p => ({x: ox + (mirror ? 1-p.x : p.x)*dw, y: oy + p.y*dh});
+}
+const smooth = [null, null];
+function readHands(){
+  if(!handMode || !landmarker || video.readyState < 2) return [];
+  let res; try{ res = landmarker.detectForVideo(video, performance.now()); }catch(e){ return []; }
+  const map = mapper();
+  const hands = (res.landmarks||[]).map(lm => lm.map(map)); hands.sort((a,b) => a[0].x - b[0].x);
+  return hands.map((pts, i) => {
+    const prev = smooth[i];
+    if(prev && prev.length === pts.length) for(let j=0;j<pts.length;j++){ pts[j].x = prev[j].x+(pts[j].x-prev[j].x)*.6; pts[j].y = prev[j].y+(pts[j].y-prev[j].y)*.6; }
+    smooth[i] = pts;
+    let cx = 0, cy = 0; [0,5,9,13,17].forEach(k => { cx += pts[k].x; cy += pts[k].y; }); cx /= 5; cy /= 5;
+    const size = Math.hypot(pts[9].x-pts[0].x, pts[9].y-pts[0].y) || 1;
+    return {pts, cx, cy, size, px:(pts[4].x+pts[8].x)/2, py:(pts[4].y+pts[8].y)/2, ratio:Math.hypot(pts[4].x-pts[8].x, pts[4].y-pts[8].y)/size, pinch:false};
+  });
+}
+
+const hs = [{pinch:false, grab:null}, {pinch:false, grab:null}];
+const two = {on:false, mx:0, my:0, d:0, cool:0};
+let prevCount = 0, lostT = 0, hovered = [];
+function nearThrottle(x, y){ if(document.body.classList.contains('clean')) return false; const r = thrTrack.getBoundingClientRect(); return x > r.left-30 && x < r.right+30 && y > r.top-20 && y < r.bottom+20; }
+function buttonAt(x, y){ const el = document.elementFromPoint(x, y); const b = el && el.closest('button'); return b && !b.disabled && b.offsetParent !== null ? b : null; }
+function pinchStart(st, h){
+  lastInteract = performance.now();
+  if(nearThrottle(h.px, h.py)){ st.grab = {type:'throttle'}; throttleFromY(h.py); return; }
+  const b = buttonAt(h.px, h.py);
+  if(b){ st.grab = {type:'none'}; b.click(); return; }
+  const p = pickPart(h.px, h.py, 80);
+  if(p){ select(p); st.grab = (!p.fixed && canGrab(p)) ? {type:'part', d:beginDrag(p, h.px, h.py)} : {type:'none'}; return; }
+  st.grab = {type:'orbit', lx:h.px, ly:h.py};
+}
+function pinchMove(st, h){
+  const g = st.grab; if(!g) return;
+  if(g.type === 'part') moveDrag(g.d, h.px, h.py);
+  else if(g.type === 'throttle') throttleFromY(h.py);
+  else if(g.type === 'orbit'){ yaw -= (h.px - g.lx)/W*4; pitch += (h.py - g.ly)/H*3; clampPitch(); g.lx = h.px; g.ly = h.py; }
+}
+function pinchEnd(st){ if(st.grab && st.grab.type === 'part') endDrag(st.grab.d); st.grab = null; }
+function handFrame(hands, dt, now){
+  hovered.forEach(el => el.classList.remove('hhover')); hovered = [];
+  hands.forEach((h, i) => {
+    const st = hs[i], was = st.pinch;
+    st.pinch = was ? h.ratio < .48 : h.ratio < .32; h.pinch = st.pinch;
+    if(st.pinch && !was) pinchStart(st, h); else if(st.pinch) pinchMove(st, h); else if(was) pinchEnd(st);
+    if(!st.grab){ const b = buttonAt(h.px, h.py) || (nearThrottle(h.px, h.py) ? thrTrack : null); if(b){ b.classList.add('hhover'); hovered.push(b); } }
+  });
+  if(hands.length === 2 && !hands[0].pinch && !hands[1].pinch && !hs[0].grab && !hs[1].grab){
+    const a = hands[0], b = hands[1], mx = (a.cx+b.cx)/2, my = (a.cy+b.cy)/2, d = Math.hypot(b.cx-a.cx, b.cy-a.cy);
+    if(two.on){
+      yaw -= (mx - two.mx)/W*3.2; pitch += (my - two.my)/H*2.2; clampPitch();
+      const rate = (d - two.d)/Math.max(dt, .001)/H;
+      if(now > two.cool){
+        if(rate > 2.4 && d/H > .5){ explodeAll(); two.cool = now + 1400; }
+        else if(rate < -2.4 && d/H < .35 && !chal.on){ assembleAll(); two.cool = now + 1400; }
+      }
+    }
+    Object.assign(two, {on:true, mx, my, d}); lastInteract = now;
+  } else two.on = false;
+}
+
+// ---------- toolbar ----------
+const toggle = (btn, on) => btn.setAttribute('aria-pressed', on ? 'true' : 'false');
+let dim = false;
+function updateButtons(){
+  $('#bExplode').disabled = chal.on; $('#bAssemble').disabled = chal.on;
+  $('#bChallenge').textContent = chal.on ? 'Quit challenge' : 'Challenge';
+  chalEl.hidden = !chal.on;
+}
+$('#bStart').onclick = () => startEngine();
+$('#bExplode').onclick = () => explodeAll();
+$('#bAssemble').onclick = () => assembleAll();
+$('#bChallenge').onclick = () => startChallenge();
+$('#bSlow').onclick = e => { slow = !slow; toggle(e.currentTarget, slow); };
+$('#bSound').onclick = e => { soundOn = !soundOn; toggle(e.currentTarget, soundOn); };
+$('#bMode').onclick = async e => {
+  const btn = e.currentTarget;
+  if(handMode){ enterTouch(); return; }
+  btn.disabled = true; setText(statusEl, 'Loading hands');
+  try{ await enterHands(); toast('Hand tracking on. Pinch a part to pull it.'); }
+  catch(err){ console.error(err); enterTouch(); toast('Camera or hand tracking could not start. Check camera permission and the internet connection.', true); }
+  btn.disabled = false;
+};
+$('#bDim').onclick = e => { dim = !dim; video.style.filter = dim ? 'brightness(.4) contrast(1.1)' : 'none'; toggle(e.currentTarget, dim); };
+$('#bMirror').onclick = e => { mirror = !mirror; video.classList.toggle('nomirror', !mirror); toggle(e.currentTarget, mirror); };
+$('#bFlip').onclick = async () => { facing = facing === 'user' ? 'environment' : 'user'; mirror = facing === 'user';
+  video.classList.toggle('nomirror', !mirror); toggle($('#bMirror'), mirror); try{ await startCamera(); }catch(e){ toast('Could not switch camera.', true); } };
+$('#bClean').onclick = () => { document.body.classList.add('clean'); $('#showUi').hidden = false; };
+$('#showUi').onclick = () => { document.body.classList.remove('clean'); $('#showUi').hidden = true; };
+$('#dStart').onclick = () => { $('#done').hidden = true; startEngine(); };
+$('#dAgain').onclick = () => startChallenge();
+$('#dClose').onclick = () => { $('#done').hidden = true; };
+
+// ---------- intro ----------
+let started = false;
+function begin(){ $('#intro').hidden = true; if(!started){ started = true; last = performance.now(); requestAnimationFrame(loop); } }
+$('#goTouch').onclick = () => { initAudio(); if(AC && AC.state === 'suspended') AC.resume(); enterTouch(); begin(); };
+$('#goHands').onclick = async () => {
+  const b = $('#goHands'), msg = $('#msg'); initAudio(); if(AC && AC.state === 'suspended') AC.resume();
+  b.disabled = true; b.textContent = 'Loading hand tracking…'; msg.textContent = '';
+  try{ await enterHands(); begin(); }
+  catch(e){ console.error(e); b.disabled = false; b.textContent = 'Start with hands';
+    msg.textContent = 'Camera or hand tracking could not start. Allow camera access for this site and check the internet connection, or use Touch only.'; }
+};
+
+// ---------- overlay drawing ----------
+const CHAINS = [[0,1,2,3,4],[0,5,6,7,8],[9,10,11,12],[13,14,15,16],[0,17,18,19,20],[5,9,13,17]];
+function drawOverlay(t, hands){
+  ctx.save(); ctx.font = '11px "Share Tech Mono", monospace'; ctx.textBaseline = 'middle';
+  for(const p of movable){
+    if(!p.dragging) continue;
+    const h = proj(p.center); if(h.z > 1) continue;
+    const s = snapState(p), r = 22 + Math.sin(t*6)*3;
+    ctx.strokeStyle = s === 'bad' ? 'rgba(255,90,90,.95)' : s === 'ok' ? 'rgba(217,251,255,.95)' : 'rgba(95,232,255,.6)';
+    ctx.lineWidth = 2; ctx.setLineDash(s ? [] : [4,5]); ctx.beginPath(); ctx.arc(h.x, h.y, r, 0, Math.PI*2); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle = ctx.strokeStyle; ctx.textAlign = 'center';
+    ctx.fillText(s === 'bad' ? 'NOT YET' : s === 'ok' ? 'RELEASE TO FIT' : 'FITS HERE', h.x, h.y + r + 12);
+  }
+  ctx.textAlign = 'left'; ctx.shadowColor = 'rgba(0,0,0,.9)'; ctx.shadowBlur = 4;
+  for(const p of parts){
+    if(!(p === selected || (!p.fitted && !p.fixed) || p.dragging)) continue;
+    const s = proj(partWorld(p)); if(s.z > 1) continue;
+    ctx.fillStyle = p === selected ? '#ffb347' : '#d9fbff';
+    ctx.beginPath(); ctx.arc(s.x, s.y, 3, 0, Math.PI*2); ctx.fill();
+    ctx.fillText(p.name.toUpperCase(), s.x + 8, s.y);
+  }
+  ctx.restore();
+
+  hands.forEach((h, i) => {
+    const {pts} = h, st = hs[i];
+    ctx.save(); ctx.globalCompositeOperation = 'lighter'; ctx.shadowColor = 'rgba(95,232,255,.9)'; ctx.shadowBlur = 10;
+    ctx.strokeStyle = 'rgba(95,232,255,.3)'; ctx.lineWidth = 1.2; ctx.beginPath();
+    for(const c of CHAINS){ ctx.moveTo(pts[c[0]].x, pts[c[0]].y); for(const k of c.slice(1)) ctx.lineTo(pts[k].x, pts[k].y); } ctx.stroke();
+    const col = h.pinch ? 'rgba(255,179,71,.95)' : 'rgba(95,232,255,.9)';
+    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(h.px, h.py, h.pinch ? 10 : 16, 0, Math.PI*2); ctx.stroke();
+    ctx.lineWidth = 3; for(let k=0;k<3;k++){ const a = t*2.4 + k*2.094; ctx.beginPath(); ctx.arc(h.px, h.py, 24, a, a+.6); ctx.stroke(); }
+    if(h.pinch){ ctx.fillStyle = col; ctx.beginPath(); ctx.arc(h.px, h.py, 4, 0, Math.PI*2); ctx.fill(); }
+    if(st.grab && st.grab.type === 'part'){
+      const c = proj(partWorld(st.grab.d.p));
+      ctx.strokeStyle = 'rgba(255,179,71,.85)'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(h.px, h.py);
+      const n = 8, dx = c.x-h.px, dy = c.y-h.py, len = Math.hypot(dx,dy)||1, nx = -dy/len, ny = dx/len;
+      for(let k=1;k<n;k++){ const f = k/n, j = (Math.random()-.5)*len*.06*Math.sin(f*Math.PI); ctx.lineTo(h.px+dx*f+nx*j, h.py+dy*f+ny*j); }
+      ctx.lineTo(c.x, c.y); ctx.stroke();
+    }
+    ctx.restore();
+  });
+}
+
+// ---------- HUD ----------
+function updateHUD(now, hands){
+  const run = eng.state === 'run';
+  setText(statusEl, eng.state === 'glow' ? 'Glow plugs' : eng.state === 'crank' ? 'Cranking' : run ? 'Running' : chal.on ? 'Challenge' : 'Standby');
+  statusEl.classList.toggle('hot', run);
+  setText(rpmEl, Math.round(eng.rpm).toLocaleString('en-IN') + ' rpm');
+  setText(tempEl, Math.round(eng.temp) + ' °C'); tempEl.classList.toggle('warn', eng.temp > 92);
+  setText(boostEl, eng.boost.toFixed(2) + ' bar');
+  setText(loadEl, Math.round(eng.thr*100) + ' %');
+  setText(fitEl, movable.filter(p => p.fitted).length + '/' + movable.length);
+  thrFill.style.height = `calc(${eng.thr*100}% - 6px)`; setText(thrVal, Math.round(eng.thr*100) + '%');
+  thrTrack.setAttribute('aria-valuenow', String(Math.round(eng.thr*100)));
+  const btn = $('#bStart'); setText(btn, eng.state === 'off' ? 'Start engine' : 'Stop engine'); btn.classList.toggle('on', eng.state !== 'off');
+
+  strokeEls.forEach((el, i) => { const k = Math.floor(cycleAngle(i)/180), s = STROKE[k]; if(el.dataset.k !== s.k){ el.dataset.k = s.k; el.querySelector('span').textContent = s.name; } });
+  const s1 = STROKE[Math.floor(cycleAngle(0)/180)];
+  setText(noteEl, slow ? `Watch cylinder 1. ${s1.name}: ${s1.desc}` : run ? 'Firing order 1-3-4-2 · shown at 1/8 real speed · use Slow-mo to follow each stroke' : 'Firing order 1-3-4-2');
+
+  if(chal.on){ const el = Math.max(0, (now - chal.start)/1000); setText(chalEl, now < chal.start ? 'GET READY' : `TIME ${fmt(el)} · PENALTY +${chal.pen} s · ${movable.filter(p=>p.fitted).length}/${movable.length}`); }
+
+  let tip;
+  const grabbing = hs.find(s => s.grab && s.grab.type === 'part') || (tdrag && tdrag.type === 'part');
+  if(grabbing) tip = 'Bring it close to its place and let go to fit it';
+  else if(handMode) tip = hands.length ? 'Pinch a part to pull it · two open hands turn the engine' : 'Show your hands to the camera';
+  else if(selected && !selected.fixed) tip = selected.fitted ? 'Drag the orange part to pull it off, or tap Remove part' : 'Drag it back to its place, or tap Fit part';
+  else if(selected) tip = 'The block is the base. Other parts fit onto it';
+  else tip = 'Tap a part to select it · drag empty space to turn';
+  setText(tipEl, tip);
+  renderInfo(false);
+}
+
+// ---------- parts animation & tint ----------
+const tmpC = new THREE.Color();
+function stepParts(dt, t){
+  for(const p of movable){
+    if(p.delay > 0){ p.delay -= dt; if(p.delay <= 0 && p.pending){ p.target.copy(p.pending); p.pending = null; } }
+    else if(p.pending){ p.target.copy(p.pending); p.pending = null; }
+    if(!p.dragging) p.group.position.lerp(p.target, 1 - Math.exp(-dt*7));
+  }
+  for(const p of parts){
+    p.flash = Math.max(0, p.flash - dt*1.6);
+    let col = p.base, fo = p.fitted || p.fixed ? .16 : .22, eo = .8;
+    if(p === selected){ col = AMBER; fo = .26 + .08*Math.sin(t*5); eo = 1; }
+    if(p.dragging){ const s = snapState(p); col = s === 'ok' ? ICE : s === 'bad' ? RED : AMBER; fo = .3; eo = 1; }
+    tmpC.copy(col); if(p.flash > 0) tmpC.lerp(RED, Math.min(1, p.flash));
+    p.fill.color.copy(tmpC); p.fill.emissive.copy(tmpC); p.edge.color.copy(tmpC); p.fill.opacity = fo; p.edge.opacity = eo;
+  }
+}
+
+// centres of each part at its home position (used for labels, snapping and picking)
+updateMechanism();
+rig.updateMatrixWorld(true);
+for(const p of parts) new THREE.Box3().setFromObject(p.group).getCenter(p.center);
+
+// ---------- main loop ----------
+let last = performance.now();
+function loop(now){
+  requestAnimationFrame(loop);
+  const dt = Math.min(.05, (now - last)/1000); last = now; const t = now/1000;
+  const hands = readHands();
+  if(handMode){
+    if(hands.length !== prevCount){
+      if(hands.length < prevCount && (lostT += dt) < .25){ /* brief tracking gap: hold the grab */ }
+      else { hs.forEach(st => { pinchEnd(st); st.pinch = false; }); prevCount = hands.length; lostT = 0; two.on = false; }
+    } else lostT = 0;
+    if(hands.length === prevCount) handFrame(hands, dt, now);
+  }
+  stepEngine(dt); updateMechanism(); updateCombustion();
+  stepParts(dt, t); camUpdate(dt, now);
+  stepParticles(dt); pMat.uniforms.scale.value = H*DPR/(2*Math.tan(FOV*D2R/2));
+  renderer.render(scene, camera);
+  ctx.clearRect(0, 0, W, H); drawOverlay(t, hands);
+  updateHUD(now, hands);
+}
+const barRO = new ResizeObserver(() => document.documentElement.style.setProperty('--barH', $('#bar').offsetHeight + 'px'));
+barRO.observe($('#bar'));
+updateButtons();
+// draw one still frame behind the intro so the engine is visible at rest
+camUpdate(0, 0); renderer.render(scene, camera);
+</script>
+</body>
+</html>
