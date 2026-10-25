@@ -4,290 +4,388 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,user-scalable=no">
 <meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="theme-color" content="#07080a">
-<title>Trigger AK</title>
+<meta name="theme-color" content="#02060c">
+<title>Holo Rifle</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;700&family=Share+Tech+Mono&display=swap">
 <style>
-  /* Full-bleed camera stage; the rifle only exists while the hand makes a finger-gun */
+  /* Camera stage + 3D hologram layer + 2D effects layer; HUD in corners */
   :root{
-    --ink:#07080a; --amber:#ffb347; --red:#ff4d3d; --ice:#f3efe6; --cyan:#5fe8ff; --dim:rgba(7,8,10,.55);
+    --ink:#02060c; --cyan:#5fe8ff; --ice:#d9fbff; --blue:#2a7dff; --amber:#ffb347;
     --display:"Chakra Petch",ui-sans-serif,system-ui,sans-serif;
     --mono:"Share Tech Mono",ui-monospace,Menlo,monospace;
     color-scheme:dark;
   }
   [hidden]{display:none!important}
   html,body{margin:0;height:100%;background:var(--ink);color:var(--ice);overflow:hidden;
-    font-family:var(--display);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:none}
+    font-family:var(--display);-webkit-user-select:none;user-select:none;-webkit-tap-highlight-color:transparent;touch-action:manipulation}
   #stage{position:fixed;inset:0;overflow:hidden;will-change:transform}
   #cam{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;transform:scaleX(-1);transition:filter .3s}
   #cam.nomirror{transform:none}
-  #fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
-  #flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,rgba(255,220,160,.9) 0%,rgba(255,140,60,.35) 45%,rgba(255,120,40,0) 85%)}
+  #gl,#fx{position:absolute;inset:0;width:100%;height:100%;pointer-events:none}
+  #flash{position:fixed;inset:0;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,#fff 0%,var(--cyan) 40%,rgba(42,125,255,0) 80%)}
   .hud{position:fixed;font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;
-    color:var(--amber);text-shadow:0 0 6px rgba(255,179,71,.7);pointer-events:none;transition:opacity .25s}
+    color:var(--cyan);text-shadow:0 0 6px rgba(95,232,255,.8);pointer-events:none;transition:opacity .25s}
   #tl{top:calc(env(safe-area-inset-top,0px) + 12px);left:max(14px,env(safe-area-inset-left,0px));display:grid;gap:6px}
   #tl b{font-family:var(--display);font-weight:700;font-size:13px;letter-spacing:.22em;color:var(--ice)}
-  #status{display:inline-block;padding:3px 8px;border:1px solid var(--amber);background:rgba(255,179,71,.08);justify-self:start}
-  #status.hot{color:var(--red);border-color:var(--red);text-shadow:0 0 6px rgba(255,77,61,.9);background:rgba(255,77,61,.12)}
+  #status{display:inline-block;padding:3px 8px;border:1px solid var(--cyan);background:rgba(95,232,255,.08);justify-self:start}
+  #status.hot{color:var(--amber);border-color:var(--amber);text-shadow:0 0 6px rgba(255,179,71,.9);background:rgba(255,179,71,.1)}
   #tr{top:calc(env(safe-area-inset-top,0px) + 12px);right:max(14px,env(safe-area-inset-right,0px));text-align:right;display:grid;gap:4px}
-  #ammo{font-family:var(--display);font-size:30px;line-height:1;letter-spacing:.04em;color:var(--ice);font-variant-numeric:tabular-nums}
-  #ammo small{font-size:13px;color:var(--amber)}
-  #pips{display:flex;gap:2px;justify-content:flex-end}
-  #pips i{width:3px;height:10px;background:var(--amber);opacity:.9}
-  #pips i.off{opacity:.15}
+  #ammo{font-family:var(--display);font-size:28px;line-height:1;color:var(--ice);font-variant-numeric:tabular-nums}
+  #ammo small{font-size:12px;color:var(--cyan)}
   #bar{position:fixed;left:0;right:0;bottom:0;display:flex;gap:8px;justify-content:center;flex-wrap:wrap;
     padding:10px max(12px,env(safe-area-inset-right,0px)) calc(env(safe-area-inset-bottom,0px) + 12px) max(12px,env(safe-area-inset-left,0px));transition:opacity .25s}
-  #bar button{font:inherit;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--amber);
-    background:rgba(7,8,10,.55);border:1px solid rgba(255,179,71,.6);padding:9px 11px;border-radius:2px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
-  #bar button[aria-pressed="true"]{background:rgba(255,179,71,.2);color:var(--ice)}
+  #bar button{font:inherit;font-family:var(--mono);font-size:11px;letter-spacing:.12em;text-transform:uppercase;color:var(--cyan);
+    background:rgba(2,6,12,.55);border:1px solid rgba(95,232,255,.6);padding:9px 11px;border-radius:2px;-webkit-backdrop-filter:blur(6px);backdrop-filter:blur(6px)}
+  #bar button[aria-pressed="true"]{background:rgba(95,232,255,.22);color:var(--ice)}
   #bar button:focus-visible,#go:focus-visible{outline:2px solid var(--ice);outline-offset:2px}
   body.clean .hud,body.clean #bar{opacity:0;pointer-events:none}
-  #tip{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);text-align:center;font-family:var(--mono);
-    font-size:11px;letter-spacing:.14em;color:var(--ice);opacity:.85;text-transform:uppercase;pointer-events:none;transition:opacity .25s;padding:0 16px}
+  #tip{position:fixed;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,0px) + 70px);text-align:center;font-family:var(--mono);padding:0 16px;
+    font-size:11px;letter-spacing:.14em;color:var(--ice);opacity:.85;text-transform:uppercase;pointer-events:none;transition:opacity .25s}
   body.clean #tip{opacity:0}
-  #intro{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(120% 80% at 50% 35%,#2a1608 0%,var(--ink) 70%);
+  #intro{position:fixed;inset:0;display:grid;place-items:center;background:radial-gradient(120% 80% at 50% 35%,#0b2233 0%,var(--ink) 70%);
     padding:24px max(20px,env(safe-area-inset-right,0px)) 24px max(20px,env(safe-area-inset-left,0px));z-index:5;overflow:auto}
   #intro .box{max-width:370px;display:grid;gap:18px}
-  #intro h1{margin:0;font-size:42px;line-height:1;letter-spacing:.08em;font-weight:700;color:var(--ice);text-shadow:0 0 18px rgba(255,140,60,.6)}
-  #intro .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--amber);text-transform:uppercase}
-  #intro ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;font-family:var(--mono);font-size:13px;line-height:1.45;color:#e2d6c4}
+  #intro h1{margin:0;font-size:40px;line-height:1;letter-spacing:.08em;font-weight:700;color:var(--ice);text-shadow:0 0 18px rgba(95,232,255,.7)}
+  #intro .eyebrow{font-family:var(--mono);font-size:11px;letter-spacing:.24em;color:var(--cyan);text-transform:uppercase}
+  #intro ol{margin:0;padding:0;list-style:none;display:grid;gap:10px;font-family:var(--mono);font-size:13px;line-height:1.45;color:#b8dfe8}
   #intro ol li{display:grid;grid-template-columns:62px 1fr;gap:10px}
-  #intro ol span{color:var(--amber);letter-spacing:.12em}
-  #go{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.2em;color:var(--ink);background:var(--amber);
-    border:0;padding:16px 18px;border-radius:2px;box-shadow:0 0 24px rgba(255,140,60,.55)}
+  #intro ol span{color:var(--cyan);letter-spacing:.12em}
+  #go{font-family:var(--display);font-weight:700;font-size:16px;letter-spacing:.2em;color:var(--ink);background:var(--cyan);
+    border:0;padding:16px 18px;border-radius:2px;box-shadow:0 0 24px rgba(95,232,255,.6)}
   #go:disabled{opacity:.6}
-  #msg{font-family:var(--mono);font-size:12px;color:var(--red);min-height:1em;line-height:1.4}
-  .note{font-family:var(--mono);font-size:11px;color:#a8998a;line-height:1.5}
-  @media (prefers-reduced-motion:reduce){#cam{transition:none}}
+  #msg{font-family:var(--mono);font-size:12px;color:var(--amber);min-height:1em;line-height:1.4}
+  .note{font-family:var(--mono);font-size:11px;color:#7fa9b4;line-height:1.5}
 </style>
 </head>
 <body>
 <div id="stage">
   <video id="cam" playsinline muted autoplay></video>
+  <canvas id="gl"></canvas>
   <canvas id="fx"></canvas>
 </div>
 <div id="flash"></div>
 
-<div class="hud" id="tl"><b>TRIGGER · AK</b><span id="status">Holstered</span><span id="shots">Shots 0</span></div>
-<div class="hud" id="tr"><span id="ammo">30<small> / 30</small></span><div id="pips"></div><span id="modeL">Auto</span></div>
-<div id="tip">Make a finger gun to draw the rifle</div>
+<div class="hud" id="tl"><b>HOLO RIFLE</b><span id="status">Offline</span><span id="hold">—</span></div>
+<div class="hud" id="tr"><span id="ammo">30<small> / 30</small></span><span id="modeL">Full auto</span></div>
+<div id="tip">Touch the floating rifle icon with your finger</div>
 <div id="bar">
   <button id="bClean" type="button">Hide UI</button>
   <button id="bMode" type="button">Mode: Auto</button>
-  <button id="bSize" type="button">Size: M</button>
+  <button id="bHand" type="button">Shooter: Right</button>
   <button id="bMirror" type="button" aria-pressed="true">Mirror</button>
-  <button id="bDim" type="button" aria-pressed="false">Dim</button>
-  <button id="bBw" type="button" aria-pressed="false">B&amp;W</button>
   <button id="bSound" type="button" aria-pressed="true">Sound</button>
   <button id="bFlip" type="button">Flip cam</button>
 </div>
 
 <div id="intro">
   <div class="box">
-    <div class="eyebrow">Aerobotix · hand-tracked AR weapon</div>
-    <h1>TRIGGER</h1>
+    <div class="eyebrow">Aerobotix · hand-tracked hologram</div>
+    <h1>HOLO RIFLE</h1>
     <ol>
-      <li><span>DRAW</span>Make a finger gun: index finger out, thumb up, other fingers curled. The rifle appears in your hand.</li>
-      <li><span>AIM</span>Point across the frame, left or right. The barrel follows your finger.</li>
-      <li><span>FIRE</span>Drop your thumb onto your index finger. Hold it down for full auto.</li>
-      <li><span>RELOAD</span>Automatic when the 30-round mag is empty. Open your hand to holster.</li>
+      <li><span>SUMMON</span>Touch the floating rifle icon at the top with your index finger in the air. The hologram builds in your hands.</li>
+      <li><span>HOLD</span>Two hands like a real rifle: trigger hand on the grip, other hand forward under the barrel.</li>
+      <li><span>AIM</span>Move both hands. The rifle follows the line between them in 3D. The crosshair shows where it hits.</li>
+      <li><span>FIRE</span>Squeeze the index finger of your trigger hand. Hold it curled for full auto.</li>
     </ol>
-    <div class="note">Use both hands to dual-wield. Turn the volume up — the shots are loud. Tap or hold the screen as a backup trigger.</div>
+    <div class="note">Stand 1.5–2 m back, side-on, aiming across the screen and slightly toward the camera. Light your hands from the front. Touch the icon again to holster.</div>
     <button id="go" type="button" disabled>Loading…</button>
     <div id="msg"></div>
   </div>
 </div>
 
 <script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
 import { HandLandmarker, FilesetResolver } from 'https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14/vision_bundle.mjs';
 
 const $ = s => document.querySelector(s);
-const video = $('#cam'), cvs = $('#fx'), ctx = cvs.getContext('2d');
-const statusEl = $('#status'), ammoEl = $('#ammo'), pipsEl = $('#pips'), tipEl = $('#tip'), shotsEl = $('#shots'), modeL = $('#modeL');
-const flashEl = $('#flash'), stage = $('#stage');
-const MAG = 30, RPM_GAP = 0.1, RELOAD_TIME = 1.9;
-const clamp = (v,a,b) => Math.max(a, Math.min(b, v));
-const rand = (a,b) => a + Math.random()*(b-a);
+const video = $('#cam'), fxc = $('#fx'), ctx = fxc.getContext('2d');
+const statusEl = $('#status'), holdEl = $('#hold'), ammoEl = $('#ammo'), modeL = $('#modeL'), tipEl = $('#tip'), flashEl = $('#flash'), stage = $('#stage');
+const clamp = (v,a,b) => Math.max(a, Math.min(b, v)), rand = (a,b) => a + Math.random()*(b-a);
+const MAG = 30, SHOT_GAP = .1, RELOAD_TIME = 1.9, HAND_M = .085;   // HAND_M: wrist→middle-knuckle length in metres
 
-for(let i=0;i<MAG;i++) pipsEl.appendChild(document.createElement('i'));
-
-let W=1, H=1, DPR=1, BASE = new DOMMatrix();
+// ---------- renderer / camera (metres, camera at origin looking down -Z) ----------
+const renderer = new THREE.WebGLRenderer({canvas: $('#gl'), alpha: true, antialias: true, premultipliedAlpha: false});
+renderer.setClearColor(0x000000, 0);
+const scene = new THREE.Scene();
+const camera = new THREE.PerspectiveCamera(45, 1, .02, 60);
+let W=1, H=1, DPR=1, FOCAL=800;
 function resize(){
   W = innerWidth; H = innerHeight; DPR = Math.min(devicePixelRatio||1, 2);
-  cvs.width = Math.round(W*DPR); cvs.height = Math.round(H*DPR);
-  BASE = new DOMMatrix().scaleSelf(DPR, DPR);
+  renderer.setPixelRatio(DPR); renderer.setSize(W, H, false);
+  fxc.width = Math.round(W*DPR); fxc.height = Math.round(H*DPR); ctx.setTransform(DPR,0,0,DPR,0,0);
+  updateFocal();
+}
+function updateFocal(){
+  // assume the camera's long side spans ~64°, then account for object-fit: cover scaling
+  const vw = video.videoWidth||1280, vh = video.videoHeight||720, s = Math.max(W/vw, H/vh);
+  FOCAL = (Math.max(vw,vh)/2)/Math.tan(THREE.MathUtils.degToRad(32)) * s;
+  camera.fov = THREE.MathUtils.radToDeg(2*Math.atan((H/2)/FOCAL)); camera.aspect = W/H; camera.updateProjectionMatrix();
 }
 addEventListener('resize', resize); resize();
+const screenTo3D = (sx, sy, Z) => new THREE.Vector3((sx-W/2)/FOCAL*Z, -(sy-H/2)/FOCAL*Z, -Z);
+const toScreen = v => { const p = v.clone().project(camera); return {x:(p.x*.5+.5)*W, y:(-p.y*.5+.5)*H, ndc:p}; };
 
-// ---------- AK-47 geometry (millimetres, +x toward muzzle, +y down) ----------
-const D = {
-  stock:   'M-128 -36 L-380 -14 Q-392 -13 -394 -4 L-398 88 Q-398 100 -386 100 L-150 28 Q-132 20 -128 8 Z',
-  butt:    'M-394 -10 L-404 -8 L-408 94 Q-408 103 -398 103 L-386 100 Q-398 100 -398 88 Z',
-  mag:     'M44 4 L98 4 Q118 96 170 180 L122 202 Q62 110 44 4 Z',
-  grip:    'M-52 4 L-16 4 L-30 96 Q-32 105 -43 105 L-66 103 Q-77 101 -75 90 Z',
-  receiver:'M-132 -40 Q-132 -46 -124 -46 L106 -46 L112 -40 L112 4 L-132 4 Z',
-  cover:   'M-122 -46 Q-120 -55 -108 -55 L96 -55 Q103 -53 105 -46 Z',
-  selector:'M-104 -31 L36 -35 L42 -28 L-104 -25 Z',
-  midband: 'M112 -46 L300 -46 L300 -34 L112 -34 Z',
-  lguard:  'M112 -34 L300 -34 L300 -6 Q298 6 284 6 L128 6 Q112 6 112 -8 Z',
-  uguard:  'M118 -58 Q118 -66 128 -66 L284 -66 Q294 -66 294 -58 L294 -46 L118 -46 Z',
-  gastube: 'M290 -62 L330 -62 L330 -50 L290 -50 Z',
-  gasblock:'M326 -66 L348 -66 L348 -22 L334 -22 L326 -34 Z',
-  barrel:  'M300 -31 L532 -31 L532 -17 L300 -17 Z',
-  fsight:  'M478 -31 L486 -62 L500 -62 L512 -31 Z',
-  brake:   'M530 -35 L566 -35 L574 -14 L530 -14 Z',
-  rsight:  'M104 -46 L104 -57 L150 -57 L152 -48 L150 -46 Z',
-};
-const P = {}; for(const k in D) P[k] = new Path2D(D[k]);
-const ALL = new Path2D(); for(const k of ['stock','butt','grip','receiver','cover','lguard','uguard','midband','gastube','gasblock','barrel','fsight','brake','rsight']) ALL.addPath(P[k]);
-const GUARD = new Path2D('M-20 4 Q-22 36 2 36 L30 36 Q42 34 42 4');
-const TRIG = new Path2D('M4 4 Q10 18 0 28');
-const MUZZLE = {x:574, y:-24}, ANCHOR = {x:-20, y:-24}, EJECT = {x:30, y:-44};
-const GUN_X0 = -412, GUN_SPAN = 990;
-const GRAIN = [];
-for(let i=0;i<8;i++){ const y0 = -26+i*13, y1 = 8+i*12; GRAIN.push([-135, y0*.7, -260, y0+rand(-8,8), -392, y1*.85]); }
-for(let i=0;i<4;i++){ GRAIN.push([120, -28+i*8, 210, -26+i*8+rand(-3,3), 296, -28+i*8]); }
+const CYAN = new THREE.Color(0x5fe8ff), ICE = new THREE.Color(0xd9fbff), BLUE = new THREE.Color(0x2a7dff), AMBER = new THREE.Color(0xffb347);
+const ADD = {transparent:true, blending:THREE.AdditiveBlending, depthWrite:false};
+function glowTexture(){
+  const c = document.createElement('canvas'); c.width = c.height = 128;
+  const g = c.getContext('2d'), r = g.createRadialGradient(64,64,0,64,64,64);
+  r.addColorStop(0,'rgba(255,255,255,1)'); r.addColorStop(.18,'rgba(255,255,255,.85)'); r.addColorStop(.45,'rgba(255,255,255,.25)'); r.addColorStop(1,'rgba(255,255,255,0)');
+  g.fillStyle = r; g.fillRect(0,0,128,128); const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; return t;
+}
+const GLOW = glowTexture();
 
-const metalG = ctx.createLinearGradient(0,-66,0,30);
-metalG.addColorStop(0,'#666c74'); metalG.addColorStop(.22,'#30353b'); metalG.addColorStop(.6,'#17191c'); metalG.addColorStop(1,'#0a0b0d');
-const woodG = ctx.createLinearGradient(0,-70,0,110);
-woodG.addColorStop(0,'#b0612e'); woodG.addColorStop(.35,'#7d3616'); woodG.addColorStop(.7,'#56220c'); woodG.addColorStop(1,'#381306');
-const magG = ctx.createLinearGradient(40,0,170,200);
-magG.addColorStop(0,'#3a3e44'); magG.addColorStop(.5,'#1a1c1f'); magG.addColorStop(1,'#0b0c0e');
-const gripG = ctx.createLinearGradient(-75,0,-16,100);
-gripG.addColorStop(0,'#5c2a14'); gripG.addColorStop(1,'#2a1006');
+// ---------- hologram AK-47 (true scale, metres; +X muzzle, +Y up, Z across) ----------
+const U = { uTime:{value:0}, uReveal:{value:-1}, uOpacity:{value:1}, uHot:{value:0} };
+const faceVS = `varying vec3 vN; varying vec3 vV; varying vec3 vL; varying float vWY;
+  void main(){ vL = position; vec4 wp = modelMatrix*vec4(position,1.0); vWY = wp.y; vec4 mv = viewMatrix*wp;
+    vV = mv.xyz; vN = normalize(normalMatrix*normal); gl_Position = projectionMatrix*mv; }`;
+const faceFS = `uniform float uTime, uReveal, uOpacity, uHot; varying vec3 vN; varying vec3 vV; varying vec3 vL; varying float vWY;
+  void main(){ if(vL.x > uReveal) discard;
+    float fres = pow(1.0 - abs(dot(normalize(vN), normalize(-vV))), 2.2);
+    float scan = 0.5 + 0.5*sin(vWY*420.0 - uTime*9.0);
+    float flick = 0.9 + 0.1*sin(uTime*53.0) * sin(uTime*7.3);
+    float edge = smoothstep(0.05, 0.0, uReveal - vL.x);
+    vec3 col = mix(vec3(0.37,0.91,1.0), vec3(0.85,0.98,1.0), fres) + vec3(1.0,0.55,0.2)*uHot*step(0.29, vL.x);
+    float a = (0.05 + fres*0.42 + scan*0.05 + edge*0.8) * flick * uOpacity;
+    gl_FragColor = vec4(col*(1.0+edge*2.0), a); }`;
+const lineVS = `varying vec3 vL; void main(){ vL = position; gl_Position = projectionMatrix*modelViewMatrix*vec4(position,1.0); }`;
+const lineFS = `uniform float uTime, uReveal, uOpacity; varying vec3 vL;
+  void main(){ if(vL.x > uReveal) discard;
+    float flick = 0.88 + 0.12*sin(uTime*61.0 + vL.x*40.0);
+    float edge = smoothstep(0.06, 0.0, uReveal - vL.x);
+    gl_FragColor = vec4(mix(vec3(0.37,0.91,1.0), vec3(1.0), edge*0.8 + 0.15), (0.85 + edge) * flick * uOpacity); }`;
+function holoMats(uniforms){
+  return { face: new THREE.ShaderMaterial({uniforms, vertexShader:faceVS, fragmentShader:faceFS, side:THREE.DoubleSide, ...ADD}),
+           line: new THREE.ShaderMaterial({uniforms, vertexShader:lineVS, fragmentShader:lineFS, ...ADD}) };
+}
+const MAIN = holoMats(U);
+const UMAG = {...U, uOpacity:{value:1}}; const MAGM = holoMats(UMAG);
 
-function drawRifle(g, s){
-  const e = g.appear, rp = g.reload>0 ? 1 - g.reload/RELOAD_TIME : -1;
-  // magazine drop / insert during reload
-  let magDy = 0, magOn = true;
-  if(rp>=0){
-    if(rp<.16) magDy = 0;
-    else if(rp<.3) magDy = (rp-.16)/.14 * 260;
-    else if(rp<.48) magOn = false;
-    else if(rp<.6) magDy = (1-(rp-.48)/.12) * 120;
+// side profiles in millimetres with +y down (converted below)
+const PROFILES = [
+  ['M-128 -36 L-380 -14 Q-392 -13 -394 -4 L-398 88 Q-398 100 -386 100 L-150 28 Q-132 20 -128 8 Z', 40],          // stock
+  ['M-394 -10 L-406 -8 L-408 94 Q-408 103 -398 103 L-386 100 Q-398 100 -398 88 Z', 44],                          // butt plate
+  ['M-52 4 L-16 4 L-30 96 Q-32 105 -43 105 L-66 103 Q-77 101 -75 90 Z', 30],                                     // pistol grip
+  ['M-132 -40 Q-132 -46 -124 -46 L106 -46 L112 -40 L112 4 L-132 4 Z', 32],                                       // receiver
+  ['M-122 -46 Q-120 -55 -108 -55 L96 -55 Q103 -53 105 -46 Z', 30],                                               // dust cover
+  ['M-22 4 L-20 30 Q-14 38 2 38 L30 38 Q44 36 44 4 L38 4 Q38 30 28 32 L4 32 Q-12 32 -15 4 Z', 8],               // trigger guard
+  ['M2 4 L8 4 Q12 18 4 28 L0 27 Q6 16 2 4 Z', 5],                                                                // trigger
+  ['M112 -34 L300 -34 L300 -6 Q298 6 284 6 L128 6 Q112 6 112 -8 Z', 38],                                         // lower handguard
+  ['M118 -58 Q118 -66 128 -66 L284 -66 Q294 -66 294 -58 L294 -46 L118 -46 Z', 30],                               // upper handguard
+  ['M326 -66 L348 -66 L348 -22 L334 -22 L326 -34 Z', 26],                                                        // gas block
+  ['M478 -31 L486 -62 L500 -62 L512 -31 Z', 10],                                                                 // front sight
+  ['M104 -46 L104 -57 L150 -57 L152 -48 L150 -46 Z', 24],                                                        // rear sight
+  ['M-104 -31 L36 -35 L42 -28 L-104 -25 Z', 4, 17],                                                              // selector lever (right side)
+];
+const MAG_PROFILE = ['M44 4 L98 4 Q118 96 170 180 L122 202 Q62 110 44 4 Z', 24];
+function shapeFrom(d){
+  const t = d.match(/[MLQZ]|-?[\d.]+/g), s = new THREE.Shape(), k = .001; let i = 0;
+  const n = () => parseFloat(t[i++]);
+  while(i < t.length){ const c = t[i++];
+    if(c==='M') s.moveTo(n()*k, -n()*k);
+    else if(c==='L') s.lineTo(n()*k, -n()*k);
+    else if(c==='Q'){ const cx=n()*k, cy=-n()*k, x=n()*k, y=-n()*k; s.quadraticCurveTo(cx,cy,x,y); }
+    else if(c==='Z') s.closePath(); }
+  return s;
+}
+const gun = new THREE.Group(); gun.matrixAutoUpdate = false; gun.visible = false; scene.add(gun);
+const magGroup = new THREE.Group(); gun.add(magGroup);
+function addPart(geo, mats, parent=gun){
+  parent.add(new THREE.Mesh(geo, mats.face));
+  parent.add(new THREE.LineSegments(new THREE.EdgesGeometry(geo, 22), mats.line));
+}
+function extrude(d, depthMM, zOffMM=0){
+  const geo = new THREE.ExtrudeGeometry(shapeFrom(d), {depth:depthMM*.001, bevelEnabled:false, curveSegments:8});
+  geo.translate(0, 0, (-depthMM/2 + zOffMM)*.001); return geo;
+}
+function tube(r, x0, x1, y, seg=18){
+  const geo = new THREE.CylinderGeometry(r*.001, r*.001, (x1-x0)*.001, seg, 1);
+  geo.rotateZ(-Math.PI/2); geo.translate((x0+x1)/2*.001, -y*.001, 0); return geo;
+}
+for(const [d, dep, z] of PROFILES) addPart(extrude(d, dep, z||0), MAIN);
+addPart(tube(9, 300, 532, -24), MAIN);          // barrel
+addPart(tube(13, 530, 576, -24, 12), MAIN);     // muzzle brake
+addPart(tube(7, 290, 330, -56), MAIN);          // gas tube nose
+addPart(tube(2.6, 300, 522, -11, 8), MAIN);     // cleaning rod
+addPart(tube(6, 70, 92, -36, 10).rotateX(0), MAIN);
+addPart(extrude(...MAG_PROFILE), MAGM, magGroup);
+// a few rib lines on the magazine and dust cover for detail
+{
+  const pts = [];
+  for(let i=1;i<4;i++){ const f=i/4; for(let j=0;j<12;j++){ const a=j/12, b=(j+1)/12;
+    const P = u => { const x0=44+f*54, x1=122+f*48, y1=202-f*22; const cx=62+f*56, cy=110-f*14; const q=1-u;
+      return [(q*q*x0 + 2*q*u*cx + u*u*x1)*.001, -(q*q*4 + 2*q*u*cy + u*u*y1)*.001]; };
+    const p0=P(a), p1=P(b); pts.push(p0[0],p0[1],.0125, p1[0],p1[1],.0125); } }
+  const g = new THREE.BufferGeometry(); g.setAttribute('position', new THREE.Float32BufferAttribute(pts,3));
+  magGroup.add(new THREE.LineSegments(g, MAGM.line));
+  const r = []; for(let x=-90;x<90;x+=24) r.push(x*.001, .053, -.015, (x+8)*.001, .047, .015);
+  const g2 = new THREE.BufferGeometry(); g2.setAttribute('position', new THREE.Float32BufferAttribute(r,3));
+  gun.add(new THREE.LineSegments(g2, MAIN.line));
+}
+// soft glow halos along the rifle so it reads like the Power Core
+const halos = [];
+for(const [x,y,s] of [[-.26,-.03,.34],[-.02,.0,.3],[.2,.03,.28],[.42,.024,.2]]){
+  const sp = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW, color:CYAN, opacity:.16, ...ADD}));
+  sp.position.set(x,y,0); sp.scale.set(s,s*.55,1); gun.add(sp); halos.push(sp);
+}
+const MUZZLE = new THREE.Vector3(.578, .024, 0), BORE_BACK = new THREE.Vector3(.30, .024, 0);
+const GRIP = new THREE.Vector3(-.042, -.048, 0), EJECT = new THREE.Vector3(.03, .042, .018);
+const FORE = new THREE.Vector3(.21, -.012, 0);
+// muzzle flash: additive sprites parented to the rifle
+const flashG = new THREE.Group(); flashG.position.copy(MUZZLE); gun.add(flashG);
+const flashCore = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW, color:ICE, opacity:0, ...ADD}));
+const flashHalo = new THREE.Sprite(new THREE.SpriteMaterial({map:GLOW, color:CYAN, opacity:0, ...ADD}));
+flashG.add(flashHalo, flashCore);
+const cone = new THREE.Mesh(new THREE.ConeGeometry(.035, .16, 10, 1, true).rotateZ(-Math.PI/2).translate(.08,0,0),
+  new THREE.MeshBasicMaterial({color:ICE, opacity:0, side:THREE.DoubleSide, ...ADD}));
+flashG.add(cone);
+
+// ---------- particles (Power Core system + gravity) ----------
+const MAXP = 1600;
+const pPos = new Float32Array(MAXP*3), pCol = new Float32Array(MAXP*3), pSize = new Float32Array(MAXP), pAlpha = new Float32Array(MAXP);
+const pVel = new Float32Array(MAXP*3), pLife = new Float32Array(MAXP), pMax = new Float32Array(MAXP), pBase = new Float32Array(MAXP), pGrav = new Float32Array(MAXP);
+const pGeo = new THREE.BufferGeometry();
+pGeo.setAttribute('position', new THREE.BufferAttribute(pPos,3)); pGeo.setAttribute('color', new THREE.BufferAttribute(pCol,3));
+pGeo.setAttribute('size', new THREE.BufferAttribute(pSize,1)); pGeo.setAttribute('alpha', new THREE.BufferAttribute(pAlpha,1));
+const pMat = new THREE.ShaderMaterial({ uniforms:{scale:{value:300}},
+  vertexShader:`attribute float size; attribute float alpha; attribute vec3 color; varying vec3 vC; varying float vA; uniform float scale;
+    void main(){ vC=color; vA=alpha; vec4 mv=modelViewMatrix*vec4(position,1.0); gl_PointSize=size*scale/max(0.05,-mv.z); gl_Position=projectionMatrix*mv; }`,
+  fragmentShader:`varying vec3 vC; varying float vA; void main(){ float d=length(gl_PointCoord-0.5); float a=smoothstep(0.5,0.0,d); a*=a; gl_FragColor=vec4(vC*(1.0+a), a*vA); }`, ...ADD });
+const points = new THREE.Points(pGeo, pMat); points.frustumCulled = false; scene.add(points);
+let pHead = 0;
+function spawn(p, vx,vy,vz, life, size, col, grav=0){
+  const i = pHead; pHead = (pHead+1)%MAXP;
+  pPos[i*3]=p.x; pPos[i*3+1]=p.y; pPos[i*3+2]=p.z; pVel[i*3]=vx; pVel[i*3+1]=vy; pVel[i*3+2]=vz;
+  pLife[i]=life; pMax[i]=life; pBase[i]=size; pGrav[i]=grav; pCol[i*3]=col.r; pCol[i*3+1]=col.g; pCol[i*3+2]=col.b;
+}
+function stepParticles(dt){
+  for(let i=0;i<MAXP;i++){
+    if(pLife[i]<=0){ pAlpha[i]=0; pSize[i]=0; continue; }
+    pLife[i]-=dt; const k = Math.max(0,pLife[i]/pMax[i]);
+    pVel[i*3+1] -= pGrav[i]*dt;
+    pPos[i*3]+=pVel[i*3]*dt; pPos[i*3+1]+=pVel[i*3+1]*dt; pPos[i*3+2]+=pVel[i*3+2]*dt;
+    const drag = pGrav[i] ? .99 : .93; pVel[i*3]*=drag; pVel[i*3+2]*=drag; if(!pGrav[i]) pVel[i*3+1]*=drag;
+    pAlpha[i]=k; pSize[i]=pBase[i]*(.4+.6*k);
   }
-  ctx.save();
-  if(e<1){ ctx.beginPath(); ctx.rect(GUN_X0-10, -140, GUN_SPAN*e+10, 400); ctx.clip(); }
-  // drop shadow (shadow offsets live in screen space, so the light stays put as the gun turns)
-  ctx.save();
-  ctx.shadowColor='rgba(0,0,0,.55)'; ctx.shadowBlur=18; ctx.shadowOffsetX=6*DPR; ctx.shadowOffsetY=12*DPR;
-  ctx.fillStyle='#111'; ctx.fill(ALL);
-  ctx.restore();
-  const lw = 1.3/s;
-  ctx.lineJoin='round'; ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  const part = (p, fill) => { ctx.fillStyle=fill; ctx.fill(p); ctx.stroke(p); };
-  // wood stock + grain
-  part(P.stock, woodG);
-  ctx.save(); ctx.clip(P.stock); ctx.strokeStyle='rgba(35,10,0,.38)'; ctx.lineWidth=1.4;
-  for(const q of GRAIN.slice(0,8)){ ctx.beginPath(); ctx.moveTo(q[0],q[1]); ctx.quadraticCurveTo(q[2],q[3],q[4],q[5]); ctx.stroke(); }
-  ctx.restore(); ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  part(P.butt, metalG);
-  if(magOn){
-    ctx.save(); ctx.translate(magDy*.25, magDy);
-    part(P.mag, magG);
-    ctx.strokeStyle='rgba(255,255,255,.1)'; ctx.lineWidth=2;
-    for(let i=1;i<4;i++){ const f=i/4; ctx.beginPath(); ctx.moveTo(52+f*40, 10); ctx.quadraticCurveTo(70+f*44, 104, 128+f*38, 192-f*14); ctx.stroke(); }
-    ctx.restore(); ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  }
-  part(P.grip, gripG);
-  ctx.save(); ctx.clip(P.grip); ctx.strokeStyle='rgba(0,0,0,.35)'; ctx.lineWidth=1.5;
-  for(let y=20;y<100;y+=9){ ctx.beginPath(); ctx.moveTo(-80,y); ctx.lineTo(-10,y-6); ctx.stroke(); }
-  ctx.restore();
-  ctx.strokeStyle='#1c1f22'; ctx.lineWidth=5; ctx.stroke(GUARD);
-  ctx.strokeStyle='#2c3035'; ctx.lineWidth=4; ctx.lineCap='round'; ctx.stroke(TRIG); ctx.lineCap='butt';
-  ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  part(P.receiver, metalG);
-  part(P.cover, metalG);
-  ctx.strokeStyle='rgba(255,255,255,.14)'; ctx.lineWidth=1.6;
-  for(let x=-90;x<90;x+=26){ ctx.beginPath(); ctx.moveTo(x,-53); ctx.lineTo(x+8,-47); ctx.stroke(); }
-  ctx.beginPath(); ctx.moveTo(-124,-44); ctx.lineTo(104,-44); ctx.stroke();
-  ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  part(P.selector, '#24282c');
-  ctx.strokeStyle='#050506'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(-4,-38); ctx.lineTo(74,-38); ctx.stroke();
-  ctx.fillStyle='#4b5158'; ctx.beginPath(); ctx.arc(80 - g.bolt*40, -36, 6.5, 0, Math.PI*2); ctx.fill();
-  ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  part(P.lguard, woodG); part(P.uguard, woodG);
-  ctx.save(); ctx.clip(P.lguard); ctx.strokeStyle='rgba(35,10,0,.35)'; ctx.lineWidth=1.2;
-  for(const q of GRAIN.slice(8)){ ctx.beginPath(); ctx.moveTo(q[0],q[1]); ctx.quadraticCurveTo(q[2],q[3],q[4],q[5]); ctx.stroke(); }
-  ctx.fillStyle='rgba(0,0,0,.25)'; ctx.fillRect(170,-30,6,32); ctx.fillRect(230,-30,6,32);
-  ctx.restore(); ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  part(P.midband, metalG); part(P.gastube, metalG); part(P.barrel, metalG); part(P.gasblock, metalG);
-  ctx.strokeStyle='#15171a'; ctx.lineWidth=3; ctx.beginPath(); ctx.moveTo(300,-11); ctx.lineTo(522,-11); ctx.stroke();
-  ctx.strokeStyle='rgba(0,0,0,.75)'; ctx.lineWidth=lw;
-  part(P.fsight, metalG); part(P.brake, metalG); part(P.rsight, metalG);
-  ctx.strokeStyle='rgba(255,255,255,.16)'; ctx.lineWidth=1.4;
-  ctx.beginPath(); ctx.moveTo(302,-29); ctx.lineTo(530,-29); ctx.moveTo(532,-33); ctx.lineTo(564,-33); ctx.stroke();
-  ctx.fillStyle='#050506'; ctx.fillRect(546,-30,4,10); ctx.fillRect(556,-30,4,10);
-  // heat glow on the barrel after sustained fire
-  if(g.heat>.05){ ctx.globalCompositeOperation='lighter'; ctx.fillStyle=`rgba(255,90,30,${Math.min(.55,g.heat*.5)})`; ctx.fill(P.barrel); ctx.fill(P.brake); ctx.globalCompositeOperation='source-over'; }
-  ctx.restore();
-  // hologram materialise: wireframe + scan line
-  if(e<1){
-    ctx.save(); ctx.globalCompositeOperation='lighter';
-    ctx.strokeStyle=`rgba(95,232,255,${.85*(1-e)})`; ctx.lineWidth=2.2/s; ctx.stroke(ALL);
-    const x = GUN_X0 + GUN_SPAN*e, gr = ctx.createLinearGradient(x-30,0,x+8,0);
-    gr.addColorStop(0,'rgba(95,232,255,0)'); gr.addColorStop(.8,'rgba(95,232,255,.7)'); gr.addColorStop(1,'rgba(230,252,255,1)');
-    ctx.fillStyle=gr; ctx.fillRect(x-30,-120,38,360);
-    ctx.restore();
+  for(const n of ['position','color','size','alpha']) pGeo.attributes[n].needsUpdate = true;
+}
+function burstAt(p, n, speed, col, size, life, grav=0, dir=null, spread=1){
+  for(let i=0;i<n;i++){
+    let u=Math.random()*2-1, th=Math.random()*6.283, s=Math.sqrt(1-u*u), sp=speed*rand(.35,1);
+    let vx=Math.cos(th)*s, vy=Math.sin(th)*s, vz=u;
+    if(dir){ vx = dir.x + vx*spread; vy = dir.y + vy*spread; vz = dir.z + vz*spread; const l=Math.hypot(vx,vy,vz)||1; vx/=l; vy/=l; vz/=l; }
+    spawn(p, vx*sp, vy*sp, vz*sp, life*rand(.5,1.1), size*rand(.6,1.4), Math.random()<.35?ICE:col, grav);
   }
 }
 
-function drawMuzzleFlash(g, s){
-  ctx.save(); ctx.translate(MUZZLE.x, MUZZLE.y); ctx.globalCompositeOperation='lighter';
-  const k = g.flashT/.06, L = (95+Math.random()*70)*(0.6+k*.4), Wd = 34+Math.random()*12;
-  const gr = ctx.createRadialGradient(8,0,0, 8,0,L*.7);
-  gr.addColorStop(0,'rgba(255,255,240,1)'); gr.addColorStop(.25,'rgba(255,214,110,.95)');
-  gr.addColorStop(.6,'rgba(255,120,30,.55)'); gr.addColorStop(1,'rgba(255,80,10,0)');
-  ctx.fillStyle = gr;
-  ctx.beginPath(); ctx.moveTo(0,-Wd*.45); ctx.lineTo(L, rand(-6,6)); ctx.lineTo(0,Wd*.45); ctx.closePath(); ctx.fill();
-  // side ports of the brake
-  ctx.beginPath(); ctx.moveTo(-20,-4); ctx.lineTo(-6+rand(0,20), -Wd*rand(.9,1.4)); ctx.lineTo(-30,-6); ctx.closePath(); ctx.fill();
-  ctx.beginPath(); ctx.moveTo(-20,4); ctx.lineTo(-6+rand(0,20), Wd*rand(.6,1)); ctx.lineTo(-30,6); ctx.closePath(); ctx.fill();
-  const n = 5 + (Math.random()*3|0);
-  for(let i=0;i<n;i++){ const a = rand(-1.1,1.1), r = L*rand(.35,.75);
-    ctx.beginPath(); ctx.moveTo(6,-5); ctx.lineTo(6+Math.cos(a)*r, Math.sin(a)*r); ctx.lineTo(6,5); ctx.closePath(); ctx.fill(); }
-  ctx.fillStyle='rgba(255,255,255,.95)'; ctx.beginPath(); ctx.ellipse(10,0,18,10,0,0,Math.PI*2); ctx.fill();
-  ctx.restore();
+// impact shock rings (3D, facing camera)
+const waves = [];
+for(let i=0;i<6;i++){ const m = new THREE.Mesh(new THREE.RingGeometry(.9,1,64), new THREE.MeshBasicMaterial({color:CYAN, opacity:0, side:THREE.DoubleSide, ...ADD}));
+  m.visible=false; scene.add(m); waves.push({m, t:1, max:.1}); }
+function shock(pos, max){ const w = waves.find(w=>w.t>=1) || waves[0]; w.m.position.copy(pos); w.m.lookAt(0,0,0); w.t=0; w.max=max; w.m.visible=true; }
+function stepWaves(dt){ for(const w of waves){ if(w.t>=1){ w.m.visible=false; continue; }
+  w.t = Math.min(1, w.t+dt/.3); const e = 1-Math.pow(1-w.t,3); w.m.scale.setScalar(.01+e*w.max); w.m.material.opacity=(1-w.t)*.9; } }
+
+// holographic rounds in flight
+const rounds = [];
+const roundMat = new THREE.SpriteMaterial({map:GLOW, color:ICE, opacity:1, ...ADD});
+function fireRound(from, dir, hit){
+  const head = new THREE.Sprite(roundMat); head.scale.set(.05,.05,1); head.position.copy(from); scene.add(head);
+  const lg = new THREE.BufferGeometry(); lg.setAttribute('position', new THREE.Float32BufferAttribute([0,0,0,0,0,0],3));
+  const line = new THREE.Line(lg, new THREE.LineBasicMaterial({color:CYAN, opacity:.95, ...ADD})); line.frustumCulled = false; scene.add(line);
+  rounds.push({head, line, pos:from.clone(), dir:dir.clone(), trav:0, max: hit.dist, hit});
+}
+function stepRounds(dt){
+  for(let i=rounds.length-1;i>=0;i--){ const r = rounds[i];
+    const adv = Math.min(r.max - r.trav, 32*dt); r.trav += adv; r.pos.addScaledVector(r.dir, adv);
+    r.head.position.copy(r.pos);
+    const tail = r.pos.clone().addScaledVector(r.dir, -Math.min(.6, r.trav));
+    const a = r.line.geometry.attributes.position; a.setXYZ(0, tail.x,tail.y,tail.z); a.setXYZ(1, r.pos.x,r.pos.y,r.pos.z); a.needsUpdate = true;
+    if(Math.random()<.7) spawn(r.pos, rand(-.1,.1), rand(-.1,.1), rand(-.1,.1), .25, .012, CYAN);
+    if(r.trav >= r.max - 1e-4){ impact(r.hit); scene.remove(r.head, r.line); r.line.geometry.dispose(); r.line.material.dispose(); rounds.splice(i,1); }
+  }
+}
+
+// holographic shell casings
+const casings = [];
+const caseGeo = new THREE.EdgesGeometry(new THREE.CylinderGeometry(.0056,.0056,.039,8).rotateZ(Math.PI/2));
+function ejectCase(pos, vel, floorY){
+  const m = new THREE.LineSegments(caseGeo, new THREE.LineBasicMaterial({color:ICE, opacity:.9, ...ADD}));
+  m.position.copy(pos); scene.add(m);
+  casings.push({m, vel, spin:new THREE.Vector3(rand(-20,20),rand(-20,20),rand(-20,20)), life:1.6, floorY, bounces:0});
+  if(casings.length>24){ const c = casings.shift(); scene.remove(c.m); c.m.material.dispose(); }
+}
+function stepCasings(dt){
+  for(let i=casings.length-1;i>=0;i--){ const c = casings[i]; c.life -= dt;
+    if(c.life<=0){ scene.remove(c.m); c.m.material.dispose(); casings.splice(i,1); continue; }
+    c.vel.y -= 9.8*dt; c.m.position.addScaledVector(c.vel, dt);
+    c.m.rotation.x += c.spin.x*dt; c.m.rotation.y += c.spin.y*dt; c.m.rotation.z += c.spin.z*dt;
+    if(c.m.position.y < c.floorY && c.vel.y < 0){ c.m.position.y = c.floorY; c.vel.y *= -.35; c.vel.x *= .6; c.vel.z *= .6; c.spin.multiplyScalar(.5); if(c.bounces++ < 2) sTink(); }
+    c.m.material.opacity = Math.min(.9, c.life*1.5);
+  }
+}
+
+// ---------- 2D decals (bullet holes, glass cracks, crosshair, summon icon) ----------
+const holes = [], cracks = [];
+let shakeAmt = 0;
+function flash(strength=.4, ms=140){ flashEl.animate([{opacity:Math.min(1,strength)},{opacity:0}], {duration:ms, easing:'ease-out'}); }
+function addHole(x, y, r){
+  const cr = []; const n = 5 + (Math.random()*4|0); for(let i=0;i<n;i++) cr.push([i/n*6.283 + rand(-.3,.3), rand(1.8,3.4)]);
+  holes.push({x,y,r,t:9,cr}); if(holes.length>80) holes.shift();
+}
+function addCrack(x,y){
+  const lines = [], n = 10 + (Math.random()*6|0);
+  for(let i=0;i<n;i++){ const a = i/n*6.283 + rand(-.2,.2), L = rand(70,190), seg = []; let r = 0;
+    while(r < L){ r += rand(12,28); const aa = a + rand(-.16,.16); seg.push(Math.cos(aa)*r, Math.sin(aa)*r); } lines.push(seg); }
+  cracks.push({x,y,lines,t:6,ring:rand(18,30)}); if(cracks.length>8) cracks.shift();
+}
+function drawDecals(dt){
+  for(let i=holes.length-1;i>=0;i--){ const h = holes[i]; h.t -= dt; if(h.t<=0){ holes.splice(i,1); continue; }
+    const a = Math.min(1, h.t/2); ctx.save(); ctx.globalAlpha = a; ctx.translate(h.x,h.y);
+    const gr = ctx.createRadialGradient(0,0,0,0,0,h.r*3.4); gr.addColorStop(0,'rgba(0,10,16,.6)'); gr.addColorStop(1,'rgba(0,10,16,0)');
+    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0,0,h.r*3.4,0,6.283); ctx.fill();
+    ctx.globalCompositeOperation='lighter'; ctx.strokeStyle='rgba(95,232,255,.75)'; ctx.lineWidth=1.1; ctx.shadowColor='rgba(95,232,255,.9)'; ctx.shadowBlur=6;
+    for(const [an, l] of h.cr){ ctx.beginPath(); ctx.moveTo(Math.cos(an)*h.r, Math.sin(an)*h.r); ctx.lineTo(Math.cos(an+.15)*h.r*l, Math.sin(an+.15)*h.r*l); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(0,0,h.r*1.25,0,6.283); ctx.stroke();
+    ctx.globalCompositeOperation='source-over'; ctx.shadowBlur=0; ctx.fillStyle='rgba(2,6,10,.95)'; ctx.beginPath(); ctx.arc(0,0,h.r,0,6.283); ctx.fill();
+    ctx.restore(); }
+  for(let i=cracks.length-1;i>=0;i--){ const c = cracks[i]; c.t -= dt; if(c.t<=0){ cracks.splice(i,1); continue; }
+    ctx.save(); ctx.translate(c.x,c.y); ctx.globalAlpha = Math.min(1, c.t/1.5);
+    ctx.strokeStyle='rgba(225,250,255,.85)'; ctx.lineWidth=1.2; ctx.shadowColor='rgba(95,232,255,.9)'; ctx.shadowBlur=5;
+    for(const seg of c.lines){ ctx.beginPath(); ctx.moveTo(0,0); for(let k=0;k<seg.length;k+=2) ctx.lineTo(seg[k],seg[k+1]); ctx.stroke(); }
+    ctx.beginPath(); ctx.arc(0,0,c.ring,0,6.283); ctx.stroke(); ctx.restore(); }
 }
 
 // ---------- audio ----------
 let AC=null, master=null, soundOn=true, liveNoise=null, shotBufs=[];
 function makeImpulse(c, dur){
   const len = (c.sampleRate*dur)|0, b = c.createBuffer(2, len, c.sampleRate), pre = c.sampleRate*.008;
-  for(let ch=0; ch<2; ch++){ const d = b.getChannelData(ch);
-    for(let i=0;i<len;i++){ const env = Math.pow(1-i/len, 3.4) * (i<pre ? i/pre : 1); d[i] = (Math.random()*2-1)*env; } }
+  for(let ch=0; ch<2; ch++){ const d = b.getChannelData(ch); for(let i=0;i<len;i++) d[i] = (Math.random()*2-1)*Math.pow(1-i/len, 3.4)*(i<pre ? i/pre : 1); }
   return b;
 }
 async function renderShot(sr, v){
   const len = (sr*1.6)|0, oc = new OfflineAudioContext(2, len, sr);
-  const noise = oc.createBuffer(1, len, sr), nd = noise.getChannelData(0);
-  for(let i=0;i<len;i++) nd[i] = Math.random()*2-1;
-  const bus = oc.createGain();
-  const shaper = oc.createWaveShaper(), curve = new Float32Array(2048);
+  const noise = oc.createBuffer(1, len, sr), nd = noise.getChannelData(0); for(let i=0;i<len;i++) nd[i] = Math.random()*2-1;
+  const bus = oc.createGain(), shaper = oc.createWaveShaper(), curve = new Float32Array(2048);
   for(let i=0;i<2048;i++){ const x=i/1023.5-1; curve[i] = Math.tanh(x*3.2)/Math.tanh(3.2); }
   shaper.curve = curve; bus.connect(shaper);
   const dry = oc.createGain(); dry.gain.value = .9; shaper.connect(dry); dry.connect(oc.destination);
   const conv = oc.createConvolver(); conv.buffer = makeImpulse(oc, 1.2);
   const wet = oc.createGain(); wet.gain.value = .42; shaper.connect(conv); conv.connect(wet); wet.connect(oc.destination);
   const ns = (t0, dur) => { const s = oc.createBufferSource(); s.buffer = noise; s.start(t0, Math.random()*.3, dur); return s; };
-  // supersonic crack
   let s = ns(0,.1), f = oc.createBiquadFilter(), g = oc.createGain();
   f.type='highpass'; f.frequency.value = 1400+v*350;
   g.gain.setValueAtTime(0,0); g.gain.linearRampToValueAtTime(1.4,.0006); g.gain.exponentialRampToValueAtTime(.001,.07);
   s.connect(f); f.connect(g); g.connect(bus);
-  // muzzle blast body
   s = ns(0,.55); f = oc.createBiquadFilter(); g = oc.createGain();
   f.type='lowpass'; f.Q.value=.8; f.frequency.setValueAtTime(8500,0); f.frequency.exponentialRampToValueAtTime(320+v*60,.2);
   g.gain.setValueAtTime(0,0); g.gain.linearRampToValueAtTime(1.7,.001); g.gain.exponentialRampToValueAtTime(.32,.06); g.gain.exponentialRampToValueAtTime(.001,.5);
   s.connect(f); f.connect(g); g.connect(bus);
-  // chest thump
-  const o = oc.createOscillator(); o.type='sine';
-  o.frequency.setValueAtTime(165-v*12,0); o.frequency.exponentialRampToValueAtTime(40,.16);
+  const o = oc.createOscillator(); o.type='sine'; o.frequency.setValueAtTime(165-v*12,0); o.frequency.exponentialRampToValueAtTime(40,.16);
   g = oc.createGain(); g.gain.setValueAtTime(0,0); g.gain.linearRampToValueAtTime(1.9,.002); g.gain.exponentialRampToValueAtTime(.001,.26);
   o.connect(g); g.connect(bus); o.start(0); o.stop(.3);
-  // bolt carrier clack
   s = ns(.05,.05); f = oc.createBiquadFilter(); g = oc.createGain();
   f.type='bandpass'; f.frequency.value=2600+v*200; f.Q.value=5;
   g.gain.setValueAtTime(0,0); g.gain.setValueAtTime(0,.05); g.gain.linearRampToValueAtTime(.55,.0506); g.gain.exponentialRampToValueAtTime(.001,.09);
@@ -307,51 +405,34 @@ function initAudio(){
     Promise.all([0,1,2,3].map(v => renderShot(AC.sampleRate, v))).then(b => shotBufs = b).catch(()=>{});
   }catch(e){ AC=null; }
 }
+const ok = () => AC && soundOn;
 function nz(t, dur, type, freq, q, gain, attack=.001){
   const s = AC.createBufferSource(); s.buffer = liveNoise;
   const f = AC.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q;
   const g = AC.createGain(); g.gain.setValueAtTime(0,t); g.gain.linearRampToValueAtTime(gain,t+attack); g.gain.exponentialRampToValueAtTime(.001,t+dur);
-  s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()*.5, dur+.05);
-  return f;
+  s.connect(f); f.connect(g); g.connect(master); s.start(t, Math.random()*.5, dur+.05); return f;
 }
 function tone(t, dur, type, f0, f1, gain){
   const o = AC.createOscillator(); o.type=type; o.frequency.setValueAtTime(f0,t); if(f1) o.frequency.exponentialRampToValueAtTime(f1,t+dur);
   const g = AC.createGain(); g.gain.setValueAtTime(gain,t); g.gain.exponentialRampToValueAtTime(.001,t+dur);
   o.connect(g); g.connect(master); o.start(t); o.stop(t+dur+.02);
 }
-const ok = () => AC && soundOn;
-function sShot(){
-  if(!ok()) return;
-  if(shotBufs.length){
-    const s = AC.createBufferSource(); s.buffer = shotBufs[(Math.random()*shotBufs.length)|0];
-    s.playbackRate.value = rand(.95,1.05);
-    const g = AC.createGain(); g.gain.value = rand(.85,1); s.connect(g); g.connect(master); s.start();
-  } else { const t=AC.currentTime; nz(t,.35,'lowpass',2500,.7,1.2); tone(t,.2,'sine',150,40,1.2); }
-}
+function sShot(){ if(!ok()) return;
+  if(shotBufs.length){ const s = AC.createBufferSource(); s.buffer = shotBufs[(Math.random()*shotBufs.length)|0]; s.playbackRate.value = rand(.95,1.05);
+    const g = AC.createGain(); g.gain.value = rand(.85,1); s.connect(g); g.connect(master); s.start(); }
+  else { const t=AC.currentTime; nz(t,.35,'lowpass',2500,.7,1.2); tone(t,.2,'sine',150,40,1.2); } }
 function sRack(t0){ if(!ok()) return; const t=t0??AC.currentTime;
   const f = nz(t,.08,'bandpass',900,2.5,.45); f.frequency.exponentialRampToValueAtTime(2600,t+.07);
   nz(t+.13,.04,'highpass',2800,1,.75); tone(t+.13,.03,'square',1700,900,.18); nz(t+.14,.09,'bandpass',600,3,.35); }
-function sEquip(){ if(!ok()) return; const t=AC.currentTime;
-  tone(t,.18,'sine',70,320,.25); nz(t,.16,'highpass',5000,.7,.08,.06); sRack(t+.08); }
-function sHolster(){ if(!ok()) return; const t=AC.currentTime; tone(t,.16,'sine',300,60,.15); nz(t,.12,'bandpass',1800,2,.12); }
+function sSummon(){ if(!ok()) return; const t=AC.currentTime; tone(t,.5,'sine',140,1100,.22); tone(t,.35,'triangle',70,280,.2); nz(t,.4,'highpass',4000,.7,.06,.2); sRack(t+.42); }
+function sHolster(){ if(!ok()) return; const t=AC.currentTime; tone(t,.35,'sine',900,90,.18); nz(t,.25,'bandpass',1800,2,.1); }
 function sDry(){ if(!ok()) return; const t=AC.currentTime; nz(t,.03,'highpass',2600,1,.55); tone(t,.02,'square',2200,1200,.12); }
-function sTink(){ if(!ok()) return; const t=AC.currentTime; const f=rand(3600,5200);
-  tone(t,.14,'sine',f,f*.98,.045); tone(t+.01,.1,'sine',f*1.47,0,.025); }
-function sRicochet(){ if(!ok()) return; const t=AC.currentTime+.05; tone(t,.4,'sine',rand(2200,3000),rand(700,1000),.06); nz(t,.15,'bandpass',3000,4,.08); }
-function sImpact(){ if(!ok()) return; const t=AC.currentTime+.03; nz(t,.06,'bandpass',rand(700,1400),1.5,.18); }
+function sTink(){ if(!ok()) return; const t=AC.currentTime, f=rand(3600,5200); tone(t,.14,'sine',f,f*.98,.045); tone(t+.01,.1,'sine',f*1.47,0,.025); }
+function sImpact(dist){ if(!ok()) return; const t=AC.currentTime+Math.min(.12, dist/340);
+  nz(t,.07,'bandpass',rand(800,1500),1.4,.32); tone(t,.08,'sine',180,70,.25); if(Math.random()<.2){ tone(t+.03,.4,'sine',rand(2200,3000),rand(700,1000),.06); } }
+function sGlass(){ if(!ok()) return; const t=AC.currentTime; nz(t,.25,'highpass',3500,1,.4); for(let i=0;i<4;i++) tone(t+i*.03,.18,'sine',rand(3000,6000),0,.05); }
 function sReload(){ if(!ok()) return; const t=AC.currentTime;
-  nz(t+.28,.05,'highpass',2500,1,.5); nz(t+.32,.12,'bandpass',800,2,.4);                 // mag release + slide out
-  tone(t+.95,.09,'sine',220,90,.5); nz(t+.95,.05,'bandpass',1500,2,.55);                 // mag seats
-  sRack(t+1.42); }
-
-// ---------- effects state ----------
-const parts = [], tracers = [], holes = [], cracks = [], lights = [], rings = [];
-let shakeAmt = 0;
-function flash(strength=.4, ms=120){ flashEl.animate([{opacity:Math.min(1,strength)},{opacity:0}], {duration:ms, easing:'ease-out'}); }
-function edgeDist(x,y,dx,dy){ let t=Infinity;
-  if(dx>1e-4) t=Math.min(t,(W-x)/dx); if(dx<-1e-4) t=Math.min(t,-x/dx);
-  if(dy>1e-4) t=Math.min(t,(H-y)/dy); if(dy<-1e-4) t=Math.min(t,-y/dy);
-  return Math.max(0,t); }
+  nz(t+.28,.05,'highpass',2500,1,.5); nz(t+.32,.12,'bandpass',800,2,.4); tone(t+.95,.09,'sine',220,90,.5); nz(t+.95,.05,'bandpass',1500,2,.55); sRack(t+1.42); }
 
 // ---------- hand tracking ----------
 let landmarker=null, mirror=true, facing='user', stream=null;
@@ -365,12 +446,12 @@ async function loadModel(){
 }
 loadModel().then(()=>{ goBtn.disabled=false; goBtn.textContent='START CAMERA'; })
   .catch(e=>{ goBtn.textContent='Could not load'; msg.textContent='Hand tracking failed to load. Check the internet connection and reload the page.'; console.error(e); });
-
 async function startCamera(){
   if(stream) stream.getTracks().forEach(t=>t.stop());
   stream = await navigator.mediaDevices.getUserMedia({audio:false, video:{facingMode:facing, width:{ideal:1280}, height:{ideal:720}}});
-  video.srcObject = stream; await video.play();
+  video.srcObject = stream; await video.play(); updateFocal();
 }
+video.addEventListener('loadedmetadata', updateFocal);
 goBtn.addEventListener('click', async ()=>{
   goBtn.disabled = true; msg.textContent='';
   initAudio(); if(AC && AC.state==='suspended') AC.resume();
@@ -378,29 +459,17 @@ goBtn.addEventListener('click', async ()=>{
   catch(e){ goBtn.disabled=false; msg.textContent='Camera blocked. Allow camera access for this site in your browser settings, then try again.'; console.error(e); }
 });
 
-// toolbar
+// toolbar (settings only — moving, aiming and firing are hands-only)
 const toggle = (btn, on) => btn.setAttribute('aria-pressed', on ? 'true' : 'false');
-let dim=false, bw=false, auto=true, sizeIdx=1;
-const SIZES = [['S',.42],['M',.56],['L',.74]];
-function applyFilter(){ video.style.filter = `${dim?'brightness(.45) contrast(1.1)':''} ${bw?'grayscale(1)':''}`.trim() || 'none'; }
-$('#bMode').onclick = e => { auto=!auto; e.currentTarget.textContent = 'Mode: '+(auto?'Auto':'Semi'); modeL.textContent = auto?'Auto':'Semi'; sDry(); };
-$('#bSize').onclick = e => { sizeIdx=(sizeIdx+1)%3; e.currentTarget.textContent = 'Size: '+SIZES[sizeIdx][0]; };
+let auto = true, rightHanded = true;
+$('#bMode').onclick = e => { auto=!auto; e.currentTarget.textContent='Mode: '+(auto?'Auto':'Semi'); modeL.textContent = auto?'Full auto':'Semi auto'; };
+$('#bHand').onclick = e => { rightHanded=!rightHanded; e.currentTarget.textContent='Shooter: '+(rightHanded?'Right':'Left'); };
 $('#bMirror').onclick = e => { mirror=!mirror; video.classList.toggle('nomirror', !mirror); toggle(e.currentTarget, mirror); };
-$('#bDim').onclick = e => { dim=!dim; applyFilter(); toggle(e.currentTarget, dim); };
-$('#bBw').onclick = e => { bw=!bw; applyFilter(); toggle(e.currentTarget, bw); };
 $('#bSound').onclick = e => { soundOn=!soundOn; toggle(e.currentTarget, soundOn); };
 $('#bFlip').onclick = async () => { facing = facing==='user'?'environment':'user'; mirror = facing==='user';
   video.classList.toggle('nomirror', !mirror); toggle($('#bMirror'), mirror); try{ await startCamera(); }catch(e){} };
 $('#bClean').onclick = e => { e.stopPropagation(); document.body.classList.add('clean'); };
-
-// backup trigger: hold the screen or the space bar
-let pointerFire=false, keyFire=false;
-stage.addEventListener('pointerdown', e => {
-  if(document.body.classList.contains('clean')){ document.body.classList.remove('clean'); return; }
-  pointerFire = true; });
-for(const ev of ['pointerup','pointercancel','pointerleave']) stage.addEventListener(ev, ()=> pointerFire=false);
-addEventListener('keydown', e => { if(e.code==='Space'){ keyFire=true; e.preventDefault(); } });
-addEventListener('keyup', e => { if(e.code==='Space') keyFire=false; });
+stage.addEventListener('click', ()=> document.body.classList.remove('clean'));
 
 function mapper(){
   const vw = video.videoWidth||1280, vh = video.videoHeight||720, s = Math.max(W/vw, H/vh);
@@ -408,292 +477,278 @@ function mapper(){
   return p => ({x: ox + (mirror ? 1-p.x : p.x)*dw, y: oy + p.y*dh});
 }
 const d2 = (a,b) => Math.hypot(a.x-b.x, a.y-b.y);
-const d3 = (a,b) => Math.hypot(a.x-b.x, a.y-b.y, (a.z||0)-(b.z||0));
-const straight = (w,i) => d3(w[i],w[i+3]) / (d3(w[i],w[i+1]) + d3(w[i+1],w[i+2]) + d3(w[i+2],w[i+3]) || 1);
-
-const smoothPts = {};
+const d3 = (a,b) => Math.hypot(a.x-b.x, a.y-b.y, a.z-b.z);
+const straight = (w,i) => d3(w[i],w[i+3]) / ((d3(w[i],w[i+1]) + d3(w[i+1],w[i+2]) + d3(w[i+2],w[i+3])) || 1);
+const smoothPts = [];
 function readHands(now){
   if(!landmarker || video.readyState < 2) return [];
   let res; try{ res = landmarker.detectForVideo(video, now); }catch(e){ return []; }
-  const map = mapper(), out = [];
-  (res.landmarks||[]).forEach((lm,i)=>{
-    const wl = (res.worldLandmarks && res.worldLandmarks[i]) || lm;
-    const label = res.handedness?.[i]?.[0]?.categoryName || ('H'+i);
-    out.push({label, pts: lm.map(map), wl});
-  });
-  if(out.length===2 && out[0].label===out[1].label){ out.sort((a,b)=>a.pts[0].x-b.pts[0].x); out[0].label='A'; out[1].label='B'; }
-  return out.map(h => {
-    const prev = smoothPts[h.label], pts = h.pts;
-    if(prev) for(let j=0;j<21;j++){ pts[j].x = prev[j].x+(pts[j].x-prev[j].x)*.6; pts[j].y = prev[j].y+(pts[j].y-prev[j].y)*.6; }
-    smoothPts[h.label] = pts;
-    const w = h.wl;
-    const idx = straight(w,5), mid = straight(w,9), ring = straight(w,13), pink = straight(w,17);
-    const palmW = d3(w[5], w[17]) || 1e-6;
-    const thumb = Math.min(d3(w[4],w[5]), d3(w[4],w[6])) / palmW;
-    const pose = idx > .8 && ring < .72 && pink < .78;
-    const size = d2(pts[0], pts[9]) || 1;
+  const map = mapper();
+  return (res.landmarks||[]).map((lm,i)=>{
+    const pts = lm.map(map), wl = res.worldLandmarks?.[i] || lm;
+    // MediaPipe labels assume a mirrored image; our frames are raw, so "Left" is the person's right hand
+    const label = res.handedness?.[i]?.[0]?.categoryName || '';
     let pcx=0, pcy=0; for(const k of [0,5,9,13,17]){ pcx+=pts[k].x; pcy+=pts[k].y; } pcx/=5; pcy/=5;
-    let dx = (pts[8].x-pts[5].x) + (pts[5].x-pts[0].x)*.35, dy = (pts[8].y-pts[5].y) + (pts[5].y-pts[0].y)*.35;
-    const dl = Math.hypot(dx,dy) || 1; dx/=dl; dy/=dl;
-    const anchor = {x: pts[5].x + (pcx-pts[5].x)*.4, y: pts[5].y + (pcy-pts[5].y)*.4};
-    return {label:h.label, pts, pose, thumb, size, anchor, dir:{x:dx,y:dy}, proj: d2(pts[8],pts[5])/size, open: idx>.85 && mid>.85 && ring>.85};
+    // index finger + knuckle direction in camera space, for one-handed aiming
+    const sx = mirror ? -1 : 1;
+    const v = (a,b) => new THREE.Vector3((wl[b].x-wl[a].x)*sx, -(wl[b].y-wl[a].y), -(wl[b].z-wl[a].z));
+    return {isRight: label==='Left', pts, cx:pcx, cy:pcy, size: d2(pts[0],pts[9]) || 1, idx: straight(wl,5),
+      fingerDir: v(5,8).normalize().multiplyScalar(.7).add(v(0,5).normalize().multiplyScalar(.3)).normalize()};
   });
 }
 
-// ---------- guns (one per hand) ----------
-const guns = {};
-let totalShots = 0, lastShotAt = -1;
-function newGun(label){ return {label, vis:false, appear:0, poseT:0, lostT:9, P:{x:W/2,y:H/2}, dir:{x:1,y:0}, size:120,
-  ammo:MAG, reload:0, trig:false, prevTrig:false, next:0, recoil:0, climb:0, heat:0, bolt:0, flashT:0, thumbK:0, m:new DOMMatrix(), s:1, tip:null, proj:1}; }
+// ---------- rifle state ----------
+const S = { summoned:false, reveal:0, ammo:MAG, reload:0, next:0, recoil:0, climb:0, heat:0, flashT:0,
+  trig:false, prevTrig:false, mode:'none', lostT:9, rearSize:120, frontSize:120,
+  rear:new THREE.Vector3(0,-.1,-1.5), axis:new THREE.Vector3(1,0,0), up:new THREE.Vector3(0,1,0),
+  rearScreen:null, trigTip:null, trigK:0, frozenDir:null, rearSide:null, sideVotes:0, shots:0, lastShot:-1 };
+const tmpM = new THREE.Matrix4(), tmpQ = new THREE.Quaternion(), tmpV = new THREE.Vector3();
+const TRIG_DOWN = .74, TRIG_UP = .83;
 
-function buildMatrix(g){
-  const s = clamp(g.size/95*SIZES[sizeIdx][1], .12, 3.2); g.s = s;
-  const ang = Math.atan2(g.dir.y, g.dir.x), flip = g.dir.x < 0;
-  let tilt = 0;
-  if(g.reload>0){ const rp = 1 - g.reload/RELOAD_TIME; tilt = Math.sin(clamp(rp*1.15,0,1)*Math.PI)*.42; }
-  if(g.appear<1) tilt += (1-g.appear)*.25;
-  const m = new DOMMatrix().translateSelf(g.P.x, g.P.y).rotateSelf(ang*180/Math.PI);
-  if(flip) m.scaleSelf(1,-1);
-  m.scaleSelf(s,s).rotateSelf((-(g.recoil*.11 + g.climb) + tilt)*180/Math.PI).translateSelf(-g.recoil*24, 0).translateSelf(-ANCHOR.x, -ANCHOR.y);
-  g.m = m;
+function assignHands(hands){
+  if(hands.length < 2) return hands.length ? {rear:hands[0], front:null} : {rear:null, front:null};
+  let [a, b] = hands;
+  let rearIsA;
+  if(a.isRight !== b.isRight) rearIsA = rightHanded ? a.isRight : !a.isRight;
+  else rearIsA = (a.cx > b.cx) === (mirror ? rightHanded : !rightHanded);
+  // stick with the previous assignment unless the new one holds for a few frames
+  const cand = rearIsA ? a : b, other = rearIsA ? b : a;
+  if(S.rearScreen){
+    const dc = Math.hypot(cand.cx-S.rearScreen.x, cand.cy-S.rearScreen.y), dO = Math.hypot(other.cx-S.rearScreen.x, other.cy-S.rearScreen.y);
+    const keep = dc <= dO;
+    if(!keep){ if(++S.sideVotes < 8) return {rear:other, front:cand}; }
+    S.sideVotes = 0;
+  }
+  return {rear:cand, front:other};
 }
-const tp = (m,x,y) => { const p = m.transformPoint(new DOMPoint(x,y)); return {x:p.x, y:p.y}; };
 
-function shoot(g, t){
-  g.ammo--; g.next = t + RPM_GAP; g.recoil = 1; g.climb = Math.min(.3, g.climb + .032); g.heat = Math.min(1.2, g.heat+.05);
-  g.flashT = .06; g.bolt = 1; totalShots++; lastShotAt = t;
-  sShot(); try{ navigator.vibrate && navigator.vibrate(22); }catch(e){}
-  buildMatrix(g);
-  const mz = tp(g.m, MUZZLE.x, MUZZLE.y), back = tp(g.m, 300, MUZZLE.y);
-  let dx = mz.x-back.x, dy = mz.y-back.y; const l = Math.hypot(dx,dy)||1; dx/=l; dy/=l;
-  const sp = rand(-.025,.025) * (1+g.climb*3), c = Math.cos(sp), sn = Math.sin(sp);
-  const vx = dx*c - dy*sn, vy = dx*sn + dy*c;
-  if(g.proj < .42 && g.tip){
-    // finger aimed straight at the camera: the round hits the "lens"
-    addCrack(g.tip.x + rand(-30,30), g.tip.y + rand(-30,30));
-    flash(.55, 160); shakeAmt = Math.min(22, shakeAmt+9);
+function updateRifle(hands, dt){
+  const {rear, front} = assignHands(hands);
+  if(!rear){ S.lostT += dt; S.mode = 'none'; S.trig = false; return; }
+  S.lostT = 0;
+  const ks = 1-Math.exp(-dt*9), kp = 1-Math.exp(-dt*26), ka = 1-Math.exp(-dt*16);
+  S.rearSize += (rear.size - S.rearSize)*ks;
+  const zr = FOCAL*HAND_M/S.rearSize;
+  const rearP = screenTo3D(rear.cx, rear.cy, zr);
+  S.rear.lerp(rearP, kp);
+  S.rearScreen = {x:rear.cx, y:rear.cy};
+  let axis;
+  if(front){
+    S.mode = 'two';
+    S.frontSize += (front.size - S.frontSize)*ks;
+    const zf = FOCAL*HAND_M/S.frontSize;
+    const frontP = screenTo3D(front.cx, front.cy, zf);
+    axis = frontP.sub(rearP);
+    // depth from hand size is noisy: limit it to a believable share of the aim
+    const lat = Math.hypot(axis.x, axis.y);
+    axis.z = clamp(axis.z, -Math.max(.05, lat*2.5) - .12, Math.max(.05, lat*2.5) + .12);
+    if(axis.lengthSq() < 1e-6) axis.copy(S.axis);
+    axis.normalize();
+    S.frozenDir = null;
   } else {
-    const edge = edgeDist(mz.x, mz.y, vx, vy), hitIn = Math.random() < .8;
-    tracers.push({x:mz.x, y:mz.y, vx, vy, trav:0, max: hitIn ? edge*rand(.35,.97) : edge+400, hit:hitIn});
+    S.mode = 'one';
+    if(S.trig && S.frozenDir) axis = S.frozenDir.clone();
+    else { axis = rear.fingerDir.clone(); S.frozenDir = axis.clone(); }
   }
-  // brass
-  const ej = tp(g.m, EJECT.x, EJECT.y), o = tp(g.m,0,0), up = tp(g.m, -0.35, -1);
-  let ex = up.x-o.x, ey = up.y-o.y; const el = Math.hypot(ex,ey)||1; ex/=el; ey/=el;
-  const bs = rand(320,480);
-  parts.push({type:'brass', x:ej.x, y:ej.y, vx:ex*bs+rand(-40,40), vy:ey*bs+rand(-60,20), rot:rand(0,6), vr:rand(-25,25), life:1.8, max:1.8, s:g.s, bounces:0});
-  for(let i=0;i<2;i++) parts.push({type:'smoke', x:mz.x, y:mz.y, vx:dx*rand(40,110)+rand(-15,15), vy:dy*rand(40,110)-rand(15,40), life:1.4, max:1.4, size:rand(6,12)*Math.max(.6,g.s)});
-  lights.push({x:mz.x, y:mz.y, t:.07, max:.07, r:260*Math.max(.7,g.s)});
+  S.axis.lerp(axis, ka).normalize();
+  // trigger = index finger of the grip hand curling
+  S.trigTip = rear.pts[8];
+  S.trigK = clamp((TRIG_UP+.05 - rear.idx)/(TRIG_UP+.05-TRIG_DOWN+.04), 0, 1);
+  if(rear.idx < TRIG_DOWN) S.trig = true; else if(rear.idx > TRIG_UP) S.trig = false;
+}
+
+function rifleMatrix(){
+  const X = S.axis.clone();
+  let Y = new THREE.Vector3(0,1,0).addScaledVector(X, -X.y);
+  if(Y.lengthSq() < 1e-4) Y.copy(S.up); Y.normalize(); S.up.copy(Y);
+  const Z = new THREE.Vector3().crossVectors(X, Y);
+  tmpM.makeBasis(X, Y, Z);
+  // recoil: push back along the bore and lift the muzzle
+  const kick = new THREE.Matrix4().makeRotationZ(S.recoil*.09 + S.climb);
+  const back = new THREE.Matrix4().makeTranslation(-S.recoil*.035, 0, 0);
+  let reloadTilt = 0;
+  if(S.reload>0){ const rp = 1 - S.reload/RELOAD_TIME; reloadTilt = Math.sin(clamp(rp*1.15,0,1)*Math.PI)*.4; }
+  const roll = new THREE.Matrix4().makeRotationX(reloadTilt);
+  const local = new THREE.Matrix4().makeTranslation(GRIP.x, GRIP.y, GRIP.z).multiply(roll).multiply(kick).multiply(back)
+    .multiply(new THREE.Matrix4().makeTranslation(-GRIP.x, -GRIP.y, -GRIP.z));
+  const pos = S.rear.clone().sub(GRIP.clone().applyMatrix3(new THREE.Matrix3().setFromMatrix4(tmpM)));
+  gun.matrix.copy(tmpM).setPosition(pos).multiply(local);
+  gun.matrixWorldNeedsUpdate = true;
+}
+
+// where the barrel points: march along the bore through a virtual room
+function traceAim(){
+  const m = gun.matrix, mz = MUZZLE.clone().applyMatrix4(m), bk = BORE_BACK.clone().applyMatrix4(m);
+  const dir = mz.clone().sub(bk).normalize();
+  const wallZ = S.rear.z - 3.2, p = new THREE.Vector3();
+  for(let t=.02; t<12; t+=.04){
+    p.copy(mz).addScaledVector(dir, t);
+    if(p.z > -.3) return {type:'glass', point:p.clone(), dist:t, from:mz, dir};
+    if(p.z < wallZ) return {type:'wall', point:p.clone(), dist:t, from:mz, dir};
+    const n = p.clone().project(camera);
+    if(Math.abs(n.x) > 1.02 || Math.abs(n.y) > 1.02) return {type:'out', point:p.clone(), dist:t+1.5, from:mz, dir};
+  }
+  return {type:'out', point:p.clone(), dist:12, from:mz, dir};
+}
+
+function shoot(t){
+  S.ammo--; S.next = t + SHOT_GAP; S.recoil = 1; S.climb = Math.min(.22, S.climb+.025); S.heat = Math.min(1, S.heat+.045);
+  S.flashT = .06; S.shots++; S.lastShot = t;
+  sShot(); try{ navigator.vibrate && navigator.vibrate(24); }catch(e){}
+  rifleMatrix(); gun.updateMatrixWorld(true);
+  const aim = traceAim();
+  const sp = .012*(1+S.climb*4);
+  const dir = aim.dir.clone().add(new THREE.Vector3(rand(-sp,sp), rand(-sp,sp), rand(-sp,sp))).normalize();
+  const hit = {...aim, dir, point: aim.from.clone().addScaledVector(dir, aim.dist)};
+  fireRound(aim.from, dir, hit);
+  // muzzle blast particles
+  burstAt(aim.from, 26, 2.2, CYAN, .03, .25, 0, dir, .5);
+  // brass ejects up and to the right of the receiver
+  const rot = new THREE.Matrix3().setFromMatrix4(gun.matrix);
+  const ej = EJECT.clone().applyMatrix4(gun.matrix);
+  const v = new THREE.Vector3(rand(-.6,-.2), rand(1.6,2.4), rand(1.4,2.2)).applyMatrix3(rot);
+  ejectCase(ej, v, S.rear.y - .9);
   shakeAmt = Math.min(14, shakeAmt + 4.5);
-  if(g.ammo<=0) startReload(g);
+  if(S.ammo<=0) startReload();
 }
-function startReload(g){ if(g.reload>0) return; g.reload = RELOAD_TIME; sReload(); }
+function startReload(){ if(S.reload>0) return; S.reload = RELOAD_TIME; sReload(); }
 
-function addCrack(x,y){
-  const lines = []; const n = 9 + (Math.random()*6|0);
-  for(let i=0;i<n;i++){ const a = i/n*Math.PI*2 + rand(-.2,.2); let r = 0, px = 0, py = 0; const seg = [];
-    const L = rand(60,170); while(r < L){ r += rand(12,28); const aa = a + rand(-.18,.18); px = Math.cos(aa)*r; py = Math.sin(aa)*r; seg.push(px,py); }
-    lines.push(seg); }
-  cracks.push({x,y,lines,t:6,max:6, ring:rand(18,30)}); if(cracks.length>8) cracks.shift();
-}
-function impact(x,y,vx,vy){
-  holes.push({x,y,r:rand(3.2,5.2),t:10,max:10,rot:rand(0,6),n:5+(Math.random()*4|0)}); if(holes.length>90) holes.shift();
-  for(let i=0;i<12;i++){ const a = Math.atan2(-vy,-vx) + rand(-1.3,1.3), sp = rand(250,750);
-    parts.push({type:'spark', x, y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, life:rand(.15,.35), max:.35}); }
-  for(let i=0;i<4;i++) parts.push({type:'dust', x, y, vx:rand(-60,60)-vx*.01, vy:rand(-70,10), life:1, max:1, size:rand(5,9)});
-  lights.push({x,y,t:.04,max:.04,r:70});
-  sImpact(); if(Math.random()<.18) sRicochet();
+function impact(hit){
+  const p = hit.point, s = toScreen(p);
+  if(hit.type==='glass'){
+    addCrack(clamp(s.x, 20, W-20), clamp(s.y, 20, H-20)); flash(.5, 180); shakeAmt = Math.min(22, shakeAmt+10); sGlass(); return;
+  }
+  if(hit.type!=='wall') return;
+  const back = hit.dir.clone().negate();
+  burstAt(p, 34, 3.4, AMBER, .022, .35, 6, back, .9);      // hot sparks, fall with gravity
+  burstAt(p, 22, 1.6, CYAN, .03, .45, 0, back, 1.1);        // holographic shards
+  burstAt(p, 8, .5, ICE, .06, .5);                          // dust flash
+  shock(p, .12);
+  const Z = -p.z; addHole(s.x, s.y, clamp(.0065*FOCAL/Z, 2, 9));
+  sImpact(hit.dist);
 }
 
-// ---------- drawing helpers ----------
-function drawHoles(dt){
-  for(let i=holes.length-1;i>=0;i--){ const h = holes[i]; h.t -= dt; if(h.t<=0){ holes.splice(i,1); continue; }
-    const a = Math.min(1, h.t/2);
-    ctx.save(); ctx.globalAlpha = a; ctx.translate(h.x,h.y); ctx.rotate(h.rot);
-    const gr = ctx.createRadialGradient(0,0,0,0,0,h.r*3.2);
-    gr.addColorStop(0,'rgba(20,16,12,.55)'); gr.addColorStop(1,'rgba(20,16,12,0)');
-    ctx.fillStyle = gr; ctx.beginPath(); ctx.arc(0,0,h.r*3.2,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='rgba(225,215,200,.55)'; ctx.lineWidth=1;
-    for(let k=0;k<h.n;k++){ const an = k/h.n*Math.PI*2; ctx.beginPath(); ctx.moveTo(Math.cos(an)*h.r, Math.sin(an)*h.r); ctx.lineTo(Math.cos(an+.2)*h.r*2.6, Math.sin(an+.2)*h.r*2.6); ctx.stroke(); }
-    ctx.fillStyle='#050403'; ctx.beginPath(); ctx.arc(0,0,h.r,0,Math.PI*2); ctx.fill();
-    ctx.strokeStyle='rgba(255,255,255,.35)'; ctx.beginPath(); ctx.arc(0,0,h.r+.8,Math.PI*1.1,Math.PI*1.8); ctx.stroke();
-    ctx.restore(); }
+// ---------- summon icon (pressed with a tracked fingertip) ----------
+const ICON = {x:0, y:0, r:34, dwell:0, cool:0, armed:true};
+function drawIcon(t, hands, dt){
+  ICON.x = W/2; ICON.y = 78 + Math.sin(t*1.6)*4;
+  let near = false;
+  for(const h of hands){ if(d2(h.pts[8], ICON) < ICON.r*1.25){ near = true; break; } }
+  ICON.cool = Math.max(0, ICON.cool-dt);
+  if(!near) ICON.armed = true;
+  if(near && ICON.armed && ICON.cool<=0){ ICON.dwell += dt; if(ICON.dwell > .45){ ICON.dwell = 0; ICON.armed = false; ICON.cool = 1; toggleRifle(); } }
+  else ICON.dwell = Math.max(0, ICON.dwell - dt*2);
+  const {x,y,r} = ICON, on = S.summoned;
+  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.shadowColor='rgba(95,232,255,.9)'; ctx.shadowBlur=14;
+  ctx.fillStyle = near ? 'rgba(95,232,255,.22)' : 'rgba(95,232,255,.08)'; ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.fill();
+  ctx.strokeStyle='rgba(95,232,255,.9)'; ctx.lineWidth=1.6; ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.stroke();
+  ctx.setLineDash([3,6]); ctx.beginPath(); ctx.arc(x,y,r+8,t*1.2,t*1.2+4.6); ctx.stroke(); ctx.setLineDash([]);
+  if(ICON.dwell>0){ ctx.strokeStyle='rgba(217,251,255,1)'; ctx.lineWidth=4; ctx.beginPath(); ctx.arc(x,y,r+4,-Math.PI/2,-Math.PI/2+6.283*ICON.dwell/.45); ctx.stroke(); }
+  // mini rifle glyph
+  ctx.translate(x, y-2); ctx.scale(.05,.05); ctx.strokeStyle='rgba(217,251,255,.95)'; ctx.lineWidth=22;
+  ctx.beginPath(); ctx.moveTo(-400,-10); ctx.lineTo(-130,-40); ctx.lineTo(300,-40); ctx.lineTo(570,-24);
+  ctx.moveTo(-400,-10); ctx.lineTo(-400,95); ctx.lineTo(-150,28); ctx.moveTo(-40,4); ctx.lineTo(-60,100);
+  ctx.moveTo(70,4); ctx.quadraticCurveTo(95,100,150,190); ctx.moveTo(-130,4); ctx.lineTo(300,4); ctx.stroke();
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  ctx.font = '600 10px "Share Tech Mono", monospace'; ctx.textAlign='center'; ctx.fillStyle='rgba(217,251,255,.9)';
+  ctx.fillText(on ? 'HOLSTER' : 'SUMMON', x, y + r + 18);
+  ctx.restore();
 }
-function stepTracers(dt){
-  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.lineCap='round';
-  for(let i=tracers.length-1;i>=0;i--){ const b = tracers[i];
-    const step = 7000*dt, nt = Math.min(b.max, b.trav+step), adv = nt-b.trav; b.trav = nt;
-    b.x += b.vx*adv; b.y += b.vy*adv;
-    const tl = Math.min(140, b.trav), gr = ctx.createLinearGradient(b.x-b.vx*tl, b.y-b.vy*tl, b.x, b.y);
-    gr.addColorStop(0,'rgba(255,170,60,0)'); gr.addColorStop(1,'rgba(255,240,190,.95)');
-    ctx.strokeStyle = gr; ctx.lineWidth = 2.6; ctx.beginPath(); ctx.moveTo(b.x-b.vx*tl, b.y-b.vy*tl); ctx.lineTo(b.x,b.y); ctx.stroke();
-    if(b.trav >= b.max){ if(b.hit) impact(b.x,b.y,b.vx,b.vy); tracers.splice(i,1); }
+function toggleRifle(){
+  S.summoned = !S.summoned;
+  if(S.summoned){ gun.visible = true; S.reveal = 0; S.climb = 0; sSummon(); flash(.2, 220);
+    const c = S.rear.clone(); burstAt(c, 120, 1.4, CYAN, .025, .6); shock(c, .5); }
+  else sHolster();
+}
+
+function drawHandHints(hands, t){
+  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.shadowColor='rgba(95,232,255,.9)'; ctx.shadowBlur=8;
+  for(const h of hands){ ctx.fillStyle='rgba(217,251,255,.85)';
+    for(const k of [4,8,12,16,20]){ ctx.beginPath(); ctx.arc(h.pts[k].x,h.pts[k].y,2.6,0,6.283); ctx.fill(); } }
+  if(S.summoned && S.trigTip && S.mode!=='none'){
+    const {x,y} = S.trigTip, r = 13;
+    ctx.lineWidth=3; ctx.strokeStyle='rgba(95,232,255,.3)'; ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.stroke();
+    ctx.strokeStyle = S.trig ? 'rgba(255,179,71,1)' : 'rgba(217,251,255,.95)';
+    ctx.beginPath(); ctx.arc(x,y,r,-Math.PI/2,-Math.PI/2+6.283*S.trigK); ctx.stroke();
   }
   ctx.restore();
 }
-function stepParts(dt){
-  const floor = H - 14;
-  for(let i=parts.length-1;i>=0;i--){ const p = parts[i]; p.life -= dt; if(p.life<=0){ parts.splice(i,1); continue; }
-    const k = p.life/p.max;
-    if(p.type==='brass'){
-      p.vy += 1700*dt; p.x += p.vx*dt; p.y += p.vy*dt; p.rot += p.vr*dt;
-      if(p.y > floor && p.vy > 0){ p.y = floor; p.vy *= -.32; p.vx *= .55; p.vr *= .5; if(p.bounces++ < 2) sTink(); }
-      ctx.save(); ctx.globalAlpha = Math.min(1,k*3); ctx.translate(p.x,p.y); ctx.rotate(p.rot);
-      const l = 26*p.s, w = 8*p.s, gr = ctx.createLinearGradient(0,-w/2,0,w/2);
-      gr.addColorStop(0,'#ffe39a'); gr.addColorStop(.5,'#c9932f'); gr.addColorStop(1,'#6b4a14');
-      ctx.fillStyle = gr; ctx.fillRect(-l/2,-w/2,l,w); ctx.fillStyle='#3a2a10'; ctx.fillRect(-l/2,-w/2,l*.12,w);
-      ctx.restore();
-    } else if(p.type==='smoke'){
-      p.x += p.vx*dt; p.y += p.vy*dt; p.vx *= .97; p.vy = p.vy*.97 - 20*dt; const r = p.size*(1+(1-k)*4);
-      const gr = ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,r);
-      gr.addColorStop(0,`rgba(205,200,192,${.2*k})`); gr.addColorStop(1,'rgba(205,200,192,0)');
-      ctx.fillStyle=gr; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill();
-    } else if(p.type==='dust'){
-      p.x += p.vx*dt; p.y += p.vy*dt; p.vy += 60*dt; const r = p.size*(1+(1-k)*2.5);
-      ctx.fillStyle=`rgba(150,135,115,${.28*k})`; ctx.beginPath(); ctx.arc(p.x,p.y,r,0,Math.PI*2); ctx.fill();
-    } else if(p.type==='spark'){
-      p.vy += 1100*dt; const ox = p.x, oy = p.y; p.x += p.vx*dt; p.y += p.vy*dt;
-      ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.strokeStyle=`rgba(255,${180+60*k|0},90,${k})`; ctx.lineWidth=1.6;
-      ctx.beginPath(); ctx.moveTo(ox-(p.x-ox)*1.5, oy-(p.y-oy)*1.5); ctx.lineTo(p.x,p.y); ctx.stroke(); ctx.restore();
-    } else if(p.type==='glow'){
-      p.x += p.vx*dt; p.y += p.vy*dt; p.vx*=.92; p.vy*=.92;
-      ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.fillStyle=`rgba(95,232,255,${k*.9})`;
-      ctx.beginPath(); ctx.arc(p.x,p.y,2.2*k+.6,0,Math.PI*2); ctx.fill(); ctx.restore();
-    }
-  }
-}
-function drawLights(dt){
-  ctx.save(); ctx.globalCompositeOperation='lighter';
-  for(let i=lights.length-1;i>=0;i--){ const L = lights[i]; L.t -= dt; if(L.t<=0){ lights.splice(i,1); continue; }
-    const a = L.t/L.max, gr = ctx.createRadialGradient(L.x,L.y,0,L.x,L.y,L.r);
-    gr.addColorStop(0,`rgba(255,200,120,${.5*a})`); gr.addColorStop(1,'rgba(255,120,40,0)');
-    ctx.fillStyle = gr; ctx.fillRect(L.x-L.r, L.y-L.r, L.r*2, L.r*2); }
-  for(let i=rings.length-1;i>=0;i--){ const r = rings[i]; r.t += dt/.45; if(r.t>=1){ rings.splice(i,1); continue; }
-    const e = 1-Math.pow(1-r.t,3); ctx.strokeStyle=`rgba(95,232,255,${.9*(1-r.t)})`; ctx.lineWidth=2.5;
-    ctx.beginPath(); ctx.arc(r.x,r.y,10+e*r.max,0,Math.PI*2); ctx.stroke(); }
-  ctx.restore();
-}
-function drawCracks(dt){
-  for(let i=cracks.length-1;i>=0;i--){ const c = cracks[i]; c.t -= dt; if(c.t<=0){ cracks.splice(i,1); continue; }
-    const a = Math.min(1, c.t/1.5);
-    ctx.save(); ctx.translate(c.x,c.y); ctx.globalAlpha = a;
-    ctx.strokeStyle='rgba(255,255,255,.75)'; ctx.lineWidth=1.2; ctx.shadowColor='rgba(0,0,0,.6)'; ctx.shadowBlur=3;
-    for(const seg of c.lines){ ctx.beginPath(); ctx.moveTo(0,0); for(let k=0;k<seg.length;k+=2) ctx.lineTo(seg[k],seg[k+1]); ctx.stroke(); }
-    ctx.beginPath(); ctx.arc(0,0,c.ring,0,Math.PI*2); ctx.stroke();
-    ctx.fillStyle='rgba(255,255,255,.25)'; ctx.beginPath(); ctx.arc(0,0,7,0,Math.PI*2); ctx.fill();
-    ctx.restore(); }
-}
-function drawReticle(g){
-  const mz = tp(g.m, MUZZLE.x, MUZZLE.y), bk = tp(g.m, 300, MUZZLE.y);
-  let dx = mz.x-bk.x, dy = mz.y-bk.y; const l = Math.hypot(dx,dy)||1; dx/=l; dy/=l;
-  const d = Math.min(edgeDist(mz.x,mz.y,dx,dy)*.6, 520); if(d < 40) return;
-  const x = mz.x+dx*d, y = mz.y+dy*d, r = 14 + g.climb*40;
-  ctx.save(); ctx.globalAlpha = g.appear*.9; ctx.strokeStyle='rgba(255,77,61,.95)'; ctx.lineWidth=1.6; ctx.shadowColor='rgba(255,77,61,.9)'; ctx.shadowBlur=6;
-  for(let k=0;k<4;k++){ const a = k*Math.PI/2; ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*r*.55, y+Math.sin(a)*r*.55); ctx.lineTo(x+Math.cos(a)*r*1.25, y+Math.sin(a)*r*1.25); ctx.stroke(); }
-  ctx.fillStyle='rgba(255,77,61,1)'; ctx.beginPath(); ctx.arc(x,y,2.2,0,Math.PI*2); ctx.fill();
-  ctx.restore();
-}
-function drawTrackHint(h, t){
-  ctx.save(); ctx.fillStyle='rgba(255,179,71,.85)'; ctx.shadowColor='rgba(255,179,71,.9)'; ctx.shadowBlur=8;
-  for(const k of [4,8,12,16,20]){ ctx.beginPath(); ctx.arc(h.pts[k].x,h.pts[k].y,3,0,Math.PI*2); ctx.fill(); }
-  ctx.strokeStyle='rgba(255,179,71,.45)'; ctx.lineWidth=1.2; ctx.setLineDash([4,6]);
-  ctx.beginPath(); ctx.arc(h.anchor.x, h.anchor.y, h.size*.9, t*1.5, t*1.5+Math.PI*1.5); ctx.stroke();
-  ctx.restore();
-}
-function drawTriggerGauge(g){
-  if(!g.wrist) return;
-  const x = g.wrist.x, y = g.wrist.y, r = 15;
-  ctx.save(); ctx.globalAlpha = g.appear*.9; ctx.lineWidth=3;
-  ctx.strokeStyle='rgba(255,179,71,.3)'; ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.stroke();
-  ctx.strokeStyle = g.trig ? 'rgba(255,77,61,1)' : 'rgba(255,179,71,.95)';
-  ctx.beginPath(); ctx.arc(x,y,r,-Math.PI/2,-Math.PI/2+Math.PI*2*g.thumbK); ctx.stroke();
+function drawCrosshair(aim, t){
+  let s;
+  if(aim.type==='out'){ return; }
+  s = toScreen(aim.point); if(s.ndc.z>1) return;
+  const r = 12 + S.climb*60, x = s.x, y = s.y;
+  ctx.save(); ctx.globalCompositeOperation='lighter'; ctx.strokeStyle='rgba(95,232,255,.95)'; ctx.lineWidth=1.6; ctx.shadowColor='rgba(95,232,255,.9)'; ctx.shadowBlur=8;
+  ctx.beginPath(); ctx.arc(x,y,r,0,6.283); ctx.stroke();
+  for(let k=0;k<4;k++){ const a = k*Math.PI/2 + t*.6; ctx.beginPath(); ctx.moveTo(x+Math.cos(a)*r*.5, y+Math.sin(a)*r*.5); ctx.lineTo(x+Math.cos(a)*r*1.5, y+Math.sin(a)*r*1.5); ctx.stroke(); }
+  ctx.fillStyle='rgba(217,251,255,1)'; ctx.beginPath(); ctx.arc(x,y,2,0,6.283); ctx.fill();
   ctx.restore();
 }
 
 // ---------- main loop ----------
-const THUMB_DOWN = .44, THUMB_UP = .58;
 let last = performance.now();
 function loop(now){
   requestAnimationFrame(loop);
   const dt = Math.min(.05, (now-last)/1000); last = now; const t = now/1000;
   const hands = readHands(now);
-  ctx.setTransform(BASE); ctx.clearRect(0,0,W,H);
+  ctx.clearRect(0,0,W,H);
+  U.uTime.value = t;
 
-  const seen = new Set();
-  for(const h of hands){
-    const g = guns[h.label] || (guns[h.label] = newGun(h.label)); seen.add(h.label);
-    if(h.pose){ g.poseT += dt; g.lostT = 0; } else { g.poseT = 0; g.lostT += dt; }
-    if(!g.vis && h.pose && g.poseT > .12){
-      g.vis = true; g.P = {...h.anchor}; g.dir = {...h.dir}; g.size = h.size; g.climb = 0;
-      sEquip(); flash(.18, 160);
-      rings.push({x:h.anchor.x, y:h.anchor.y, t:0, max:h.size*2.2});
-      for(let i=0;i<46;i++){ const a = rand(0,6.283), sp = rand(80,420); parts.push({type:'glow', x:h.anchor.x, y:h.anchor.y, vx:Math.cos(a)*sp, vy:Math.sin(a)*sp, life:rand(.3,.6), max:.6}); }
-    }
-    if(g.vis && (h.open ? g.lostT > .12 : g.lostT > .45)){ g.vis = false; sHolster(); }
-    // follow the hand
-    const kp = 1-Math.exp(-dt*32), kd = 1-Math.exp(-dt*20);
-    g.P.x += (h.anchor.x-g.P.x)*kp; g.P.y += (h.anchor.y-g.P.y)*kp;
-    let nx = g.dir.x + (h.dir.x-g.dir.x)*kd, ny = g.dir.y + (h.dir.y-g.dir.y)*kd; const nl = Math.hypot(nx,ny)||1;
-    g.dir = {x:nx/nl, y:ny/nl}; g.size += (h.size-g.size)*kp;
-    g.tip = h.pts[8]; g.wrist = h.pts[0]; g.proj = h.proj;
-    g.thumbK = clamp((THUMB_UP+.08 - h.thumb)/(THUMB_UP+.08-THUMB_DOWN), 0, 1);
-    if(h.thumb < THUMB_DOWN) g.thumbTrig = true; else if(h.thumb > THUMB_UP) g.thumbTrig = false;
+  updateRifle(hands, dt);
+
+  // reveal / holster animation (hologram builds from the stock to the muzzle)
+  S.reveal = clamp(S.reveal + (S.summoned ? dt/.55 : -dt/.3), 0, 1);
+  if(!S.summoned && S.reveal<=0) gun.visible = false;
+  U.uReveal.value = S.reveal>=1 ? 2 : -.42 + S.reveal*1.02;
+  U.uOpacity.value = S.lostT > .6 ? .45 : 1;
+  for(const h of halos) h.material.opacity = .16*S.reveal*U.uOpacity.value;
+
+  S.recoil *= Math.exp(-dt*24); S.flashT = Math.max(0, S.flashT-dt); S.heat = Math.max(0, S.heat-dt*.25);
+  U.uHot.value = S.heat*.6;
+  if(S.reload>0){ S.reload -= dt; if(S.reload<=0){ S.reload = 0; S.ammo = MAG; } }
+  let magVis = 1;
+  if(S.reload>0){ const rp = 1-S.reload/RELOAD_TIME; magGroup.position.y = rp<.16 ? 0 : rp<.3 ? -(rp-.16)/.14*.25 : rp<.48 ? -.25 : rp<.6 ? -(1-(rp-.48)/.12)*.12 : 0;
+    magVis = (rp>.3 && rp<.48) ? 0 : 1; } else magGroup.position.y = 0;
+  UMAG.uOpacity.value = U.uOpacity.value*magVis;
+
+  const ready = S.summoned && S.reveal>=1 && S.mode!=='none';
+  const firing = ready && S.trig;
+  if(!(firing && auto)) S.climb *= Math.exp(-dt*5);
+  if(ready && S.reload<=0){
+    if(S.ammo>0){ if(auto ? (S.trig && t>=S.next) : (S.trig && !S.prevTrig && t>=S.next)) shoot(t); }
+    else if(S.trig && !S.prevTrig){ sDry(); startReload(); }
   }
-  for(const k in guns){ const g = guns[k];
-    if(!seen.has(k)){ g.lostT += dt; g.poseT = 0; g.thumbTrig = false; if(g.vis && g.lostT > .35){ g.vis = false; sHolster(); } }
-  }
+  S.prevTrig = S.trig;
 
-  drawHoles(dt);
-  stepTracers(dt);
+  let aim = null;
+  if(gun.visible){ rifleMatrix(); gun.updateMatrixWorld(true); aim = traceAim(); }
+  const fk = S.flashT/.06;
+  flashCore.material.opacity = fk; flashHalo.material.opacity = fk*.8; cone.material.opacity = fk*.55;
+  if(fk>0){ const s = rand(.08,.13); flashCore.scale.set(s,s,1); flashHalo.scale.set(s*2.6,s*2.6,1); cone.scale.set(rand(.8,1.3),1,1); cone.rotation.x = rand(0,6.28); }
 
-  const visible = [];
-  for(const k in guns){ const g = guns[k];
-    g.appear = clamp(g.appear + (g.vis ? dt/.26 : -dt/.18), 0, 1);
-    g.recoil *= Math.exp(-dt*22); g.bolt *= Math.exp(-dt*30); g.flashT = Math.max(0, g.flashT-dt);
-    g.heat = Math.max(0, g.heat - dt*.25);
-    if(g.reload>0){ g.reload -= dt; if(g.reload<=0){ g.reload=0; g.ammo=MAG; } }
-    g.trig = g.vis && (g.thumbTrig || pointerFire || keyFire);
-    const firing = g.trig && auto;
-    if(!firing) g.climb *= Math.exp(-dt*5);
-    if(g.vis && g.appear > .85){
-      if(g.reload<=0 && g.ammo>0){
-        if(auto ? (g.trig && t >= g.next) : (g.trig && !g.prevTrig && t >= g.next)) shoot(g, t);
-      } else if(g.trig && !g.prevTrig && g.reload<=0 && g.ammo<=0){ sDry(); startReload(g); }
-    }
-    g.prevTrig = g.trig;
-    if(g.appear <= 0) continue;
-    buildMatrix(g);
-    ctx.setTransform(BASE.multiply(g.m));
-    drawRifle(g, g.s);
-    if(g.flashT > 0) drawMuzzleFlash(g, g.s);
-    ctx.setTransform(BASE);
-    visible.push(g);
-  }
-  stepParts(dt);
-  drawLights(dt);
-  for(const g of visible){ if(g.appear>.9) drawReticle(g); drawTriggerGauge(g); }
-  for(const h of hands){ const g = guns[h.label]; if(!g || g.appear < .05) drawTrackHint(h, t); }
-  drawCracks(dt);
+  stepRounds(dt); stepCasings(dt); stepParticles(dt); stepWaves(dt);
+  pMat.uniforms.scale.value = H*DPR/(2*Math.tan(THREE.MathUtils.degToRad(camera.fov/2)));
+  renderer.render(scene, camera);
 
-  // shake
+  drawDecals(dt);
+  if(aim && S.reveal>=1 && S.mode!=='none') drawCrosshair(aim, t);
+  drawHandHints(hands, t);
+  drawIcon(t, hands, dt);
+
   if(shakeAmt>.2){ stage.style.transform = `translate(${(Math.random()-.5)*shakeAmt}px,${(Math.random()-.5)*shakeAmt}px)`; shakeAmt*=Math.exp(-dt*9); }
   else if(shakeAmt){ shakeAmt=0; stage.style.transform=''; }
 
   // HUD
-  shotsEl.textContent = 'Shots ' + totalShots;
-  const vg = visible.filter(g=>g.vis);
-  const reloading = vg.some(g=>g.reload>0), firingNow = t - lastShotAt < .15;
-  if(reloading){ statusEl.textContent='Reloading'; statusEl.classList.add('hot'); }
-  else if(firingNow){ statusEl.textContent='Firing'; statusEl.classList.add('hot'); }
-  else if(vg.length){ statusEl.textContent = vg.length>1 ? 'Dual armed' : 'Armed'; statusEl.classList.remove('hot'); }
-  else { statusEl.textContent='Holstered'; statusEl.classList.remove('hot'); }
-  const primary = vg[0] || Object.values(guns).find(g=>g.ammo<MAG) || {ammo:MAG, reload:0};
-  if(vg.length>1) ammoEl.innerHTML = `${vg[0].ammo}<small> · </small>${vg[1].ammo}`;
-  else ammoEl.innerHTML = `${primary.reload>0 ? '--' : primary.ammo}<small> / ${MAG}</small>`;
-  const pips = pipsEl.children; for(let i=0;i<MAG;i++) pips[i].classList.toggle('off', i >= primary.ammo || primary.reload>0);
-  if(reloading) tipEl.textContent = 'Reloading…';
-  else if(vg.length) tipEl.textContent = auto ? 'Drop your thumb to fire · hold for full auto' : 'Drop your thumb to fire · one shot per press';
-  else if(hands.length) tipEl.textContent = 'Index out, thumb up, other fingers curled';
-  else tipEl.textContent = 'Make a finger gun to draw the rifle';
+  const hot = S.reload>0 || t-S.lastShot < .15;
+  statusEl.textContent = !S.summoned ? 'Holstered' : S.reload>0 ? 'Reloading' : t-S.lastShot < .15 ? 'Firing' : S.mode==='none' ? 'No hands' : 'Armed';
+  statusEl.classList.toggle('hot', hot);
+  holdEl.textContent = S.mode==='two' ? 'Two-hand grip' : S.mode==='one' ? 'One hand' : 'No hands';
+  ammoEl.innerHTML = `${S.reload>0 ? '--' : S.ammo}<small> / ${MAG}</small>`;
+  tipEl.textContent = !S.summoned ? 'Touch the floating rifle icon with your finger'
+    : S.reload>0 ? 'Reloading…'
+    : S.mode==='one' ? 'Bring your other hand under the barrel'
+    : S.mode==='two' ? 'Curl your trigger finger to fire'
+    : 'Show both hands to the camera';
 }
 </script>
 </body>
