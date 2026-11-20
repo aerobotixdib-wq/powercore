@@ -181,6 +181,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .apps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 8px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px 10px}
 .app{display:flex;flex-direction:column;align-items:center;gap:7px;text-decoration:none;color:var(--ink);font:600 12.5px var(--body);text-align:center}
 .app .ac{width:58px;height:58px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font:700 18px var(--display)}
+button.app{background:none;border:0;cursor:pointer;padding:0}
 .app:focus-visible{outline:none}.app:focus-visible .ac{outline:2px solid var(--accent);outline-offset:3px}
 #cSheet{z-index:45}
 .confirm{text-align:center}
@@ -212,6 +213,7 @@ header{align-items:center}
     <div class="hright"><span class="cycle num" id="cycle"></span><button type="button" class="hbtn" id="resetBtn" aria-label="Clear saved data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>
   </header>
   <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
+  <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
   <p class="note" id="exNote">Example figures for preview. Tap Add income to start with your own salary.</p>
 
   <section class="summary" aria-label="This cycle">
@@ -398,13 +400,14 @@ function render(){
   const total=planned+state.unassigned;
   $('exNote').hidden=!state.example;
   $('cycle').textContent='Day '+day+' of cycle';
-  $('leftAll').textContent=inr(total-spent);
+  const ut=state.untracked||0;
+  $('leftAll').textContent=inr(total-spent-ut);
   $('ofAll').textContent='of '+inr(total)+' this cycle';
-  $('barAll').style.width=(total?Math.max(0,100*(total-spent)/total):0)+'%';
+  $('barAll').style.width=(total?Math.max(0,100*(total-spent-ut)/total):0)+'%';
   $('cash').textContent='Cash in hand '+inr(state.cash);
   $('unas').textContent=state.unassigned>0?'Unassigned '+inr(state.unassigned):'';
   const sb=state.buckets.find(x=>x.name==='Savings');
-  $('spentAll').textContent='Spent '+inr(spent-(sb?sb.spent:0));
+  $('spentAll').textContent='Spent '+inr(spent-(sb?sb.spent:0)+ut);
   const g=$('grid');g.innerHTML='';
   state.buckets.forEach(b=>{
     const left=b.planned-b.spent, used=b.planned?b.spent/b.planned:0;
@@ -442,7 +445,7 @@ $('addForm').onsubmit=e=>{
   state.buckets.splice(state.buckets.length-1,0,{name:n,planned:0,spent:0});
   save();render();$('sheet').hidden=true;toast('Bucket added');
 };
-['cashBtn'].forEach(id=>$(id).onclick=()=>toast('This comes in the next step'));
+$('cashBtn').onclick=()=>openSub('cash');
 
 /* Add income */
 let inc;
@@ -512,7 +515,7 @@ $('incNext').onclick=()=>{
     if(!state.example)state.history.push({start:state.start,end:today(),buckets:state.buckets.map(b=>({...b})),unassigned:state.unassigned});
     state.buckets=state.buckets.map(b=>({name:b.name,planned:(inc.alloc[b.name]||0)+(isSav(b)?savLeft+carry:0),spent:0}));
     if(state.example){state.goals=state.goals.filter(g=>!g.ex);state.loans=state.loans.filter(l=>!l.ex);state.txns=state.txns.filter(t=>!t.ex)}
-    state.start=today();state.unassigned=left;state.example=false;
+    state.start=today();state.unassigned=left;state.example=false;state.untracked=0;
     save();render();closeIncome();toast(carry?'New cycle started. '+inr(carry)+' moved to Savings':'New cycle started');
   }else{
     state.buckets.forEach(b=>{b.planned+=inc.alloc[b.name]||0});
@@ -553,8 +556,8 @@ const loanBucket=()=>state.buckets.find(b=>b.name==='Loan EMI');
 const freeSav=()=>{const s=savBucket();return s?s.planned-s.spent:0};
 let sub=null;
 function done(msg){save();render();refreshSub();if(msg)toast(msg)}
-function openSub(k){k==='sav'?renderSavings():renderLoans();$('subPage').hidden=false;$('subPage').scrollTop=0}
-function refreshSub(){if($('subPage').hidden)return;sub==='sav'?renderSavings():renderLoans()}
+function openSub(k){({sav:renderSavings,loan:renderLoans,cash:renderCash})[k]();$('subPage').hidden=false;$('subPage').scrollTop=0}
+function refreshSub(){if($('subPage').hidden)return;({sav:renderSavings,loan:renderLoans,cash:renderCash})[sub]()}
 $('subBack').onclick=()=>{$('subPage').hidden=true;sub=null};
 
 /* Form sheet */
@@ -736,6 +739,65 @@ function newLoan(){openForm({title:'Add loan',ok:'Add loan',fields:loanFields(),
 function editLoan(l){openForm({title:'Edit loan',ok:'Save',fields:loanFields(l),onSubmit:v=>saveLoan(l,v),
   delLabel:'Remove this loan',onDelete:()=>{state.loans=state.loans.filter(x=>x!==l);done('Loan removed')}})}
 
+/* Cash: take cash out, spend it from a bucket, count it weekly */
+const daysSince=d=>Math.floor((Date.now()-new Date(d+'T00:00'))/864e5);
+const cashDue=()=>state.cash>0&&daysSince(state.cashChecked||state.start)>=7;
+function cashLog(type,amt,note){state.cashLog=state.cashLog||[];state.cashLog.unshift({date:today(),type,amt,note:note||''});state.cashLog=state.cashLog.slice(0,100)}
+const CASHI={spent:'M5 12h14',in:'M12 5v14M5 12h14',count:'M5 13l4 4L19 7',untracked:'M12 8v5M12 16h.01M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18z'};
+function renderCash(){
+  sub='cash';$('subPage').className='page';$('subTitle').textContent='Cash';
+  const B=$('subBody');B.innerHTML='';
+  const hero=mk('section','hero');
+  hero.append(mk('span','label','Cash in hand'),mk('span','big num',inr(state.cash)));
+  const r=mk('div','row num');
+  r.append(mk('span',null,'Untracked this cycle '+inr(state.untracked||0)),mk('span',null,'Last counted '+(state.cashChecked?fmtDate(state.cashChecked):'never')));
+  hero.append(r);B.append(hero);
+  const g=mk('div','apps');
+  [['Spent cash',CASHI.spent,spendCash],['Took out cash',CASHI.in,withdrawCash],['Count my cash',CASHI.count,countCash]].forEach(([t,ic,fn])=>{
+    const b=mk('button','app');b.type='button';const c=mk('span','ac');c.innerHTML=svg(ic);b.append(c,mk('span',null,t));b.onclick=fn;g.append(b);
+  });
+  B.append(g);
+  B.append(mk('p','hint','Taking cash out of the bank is not spending. A bucket only goes down when you spend the cash. Count your cash once a week, and any money you can\'t account for shows as untracked.'));
+  const log=state.cashLog||[];
+  if(log.length){
+    const sh=mk('div','sechead');sh.append(mk('h4',null,'Cash history'));B.append(sh);
+    const l=mk('div','alist');
+    log.slice(0,15).forEach(e=>{
+      const row=mk('div','arow'),m=mk('span','mini');m.innerHTML=svg(CASHI[e.type]||CASHI.spent);
+      const label={spent:'Spent',in:'Took out cash',count:'Counted cash',untracked:'Untracked'}[e.type];
+      const nm=mk('span','nm');nm.append(mk('span',null,label),mk('small',null,(e.note?e.note+' · ':'')+fmtDate(e.date)));
+      const sign=e.type==='in'?'+':e.type==='count'?'':'−';
+      row.append(m,nm,mk('span','amtr num',sign+inr(e.amt)));l.append(row);
+    });
+    B.append(l);
+  }
+}
+function spendCash(){openForm({title:'Spent cash',ok:'Save',sub:'Cash in hand: '+inr(state.cash),
+  fields:[{id:'amt',type:'money',label:'Amount'},
+    {id:'bucket',type:'chips',label:'From which bucket?',options:state.buckets.filter(b=>b.name!=='Savings').map(b=>({v:b.name,t:b.name}))},
+    {id:'note',type:'text',label:'Spent on',opt:true,ph:'e.g. Vegetables, auto fare'}],
+  onSubmit:v=>{
+    if(!v.amt)return 'Type an amount.';if(!v.bucket)return 'Choose a bucket.';
+    if(v.amt>state.cash)return 'You have only '+inr(state.cash)+' cash in hand. If you took out more, add it with Took out cash first.';
+    state.cash-=v.amt;
+    recordTxn({id:'c'+Date.now(),amt:v.amt,bucket:v.bucket,name:v.note||'Cash',pa:'',note:'',app:'Cash'});
+    cashLog('spent',v.amt,(v.note?v.note+' · ':'')+v.bucket);
+    done(inr(v.amt)+' taken from '+v.bucket);
+  }})}
+function withdrawCash(){openForm({title:'Took out cash',ok:'Save',sub:'This is not spending. It only adds to your cash in hand.',
+  fields:[{id:'amt',type:'money',label:'Amount taken out'}],
+  onSubmit:v=>{if(!v.amt)return 'Type an amount.';state.cash+=v.amt;cashLog('in',v.amt);done(inr(v.amt)+' added to cash in hand')}})}
+function countCash(){openForm({title:'Count my cash',ok:'Save',sub:'The app thinks you have '+inr(state.cash)+'. Count the cash in your pocket or wallet.',
+  fields:[{id:'amt',type:'money',label:'Cash you have right now'}],
+  onSubmit:v=>{
+    if(v.amt==null)return 'Type how much cash you have. Type 0 if none.';
+    const diff=state.cash-v.amt;
+    if(diff>0){state.untracked=(state.untracked||0)+diff;cashLog('untracked',diff)}
+    state.cash=v.amt;state.cashChecked=today();cashLog('count',v.amt);
+    done(diff>0?inr(diff)+' went untracked':diff<0?'Cash in hand updated':'Your cash matches');
+  }})}
+$('cashBar').onclick=countCash;
+
 /* Pay: amount and bucket here, scan inside the UPI app */
 let pay={},askTimer=null;
 const APPS=[
@@ -877,6 +939,7 @@ $('paidOther').onclick=()=>{
   recordTxn(p);$('payPage').hidden=true;done(inr(p.amt)+' taken from '+p.bucket);
 };
 function renderExtras(){
+  $('cashBar').hidden=!cashDue();
   const pb=$('pendBar'),p=state.pending;pb.hidden=!p;
   if(p)pb.querySelector('span').textContent='Waiting: '+inr(p.amt)+' to '+p.name+' from '+p.bucket;
   const rl=$('recentList'),tx=state.txns||[];$('recent').hidden=!tx.length;rl.innerHTML='';
