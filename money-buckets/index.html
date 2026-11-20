@@ -182,6 +182,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cic{width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;align-self:center}.cic svg{width:30px;height:30px}
 .confirm .btn{padding:15px}
 .dangerlink.mutedl{color:var(--muted)}
+.hright{display:flex;align-items:center;gap:10px}
+.hbtn{width:38px;height:38px;border-radius:50%;border:0;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line);display:grid;place-items:center;cursor:pointer}
+.hbtn svg{width:18px;height:18px}
+header{align-items:center}
 .steps{gap:10px;box-shadow:inset 0 0 0 1.5px var(--accent);border:0}
 .steps>b{font:700 16px var(--display)}
 .steps ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px;font-size:14px;line-height:1.4}
@@ -197,7 +201,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 <div class="wrap">
   <header>
     <h1>Money Buckets</h1>
-    <span class="cycle num" id="cycle"></span>
+    <div class="hright"><span class="cycle num" id="cycle"></span><button type="button" class="hbtn" id="resetBtn" aria-label="Clear saved data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>
   </header>
   <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
   <p class="note" id="exNote">Example figures for preview. Tap Add income to start with your own salary.</p>
@@ -921,6 +925,15 @@ function renderExtras(){
   });
 }
 $('payBtn').onclick=openPay;
+$('resetBtn').onclick=()=>openForm({title:'Clear saved data',ok:'Clear',
+  sub:'Payments only: removes all payments and gives the money back to the buckets. Everything: deletes all buckets, payments, goals and loans on this phone. This cannot be undone.',
+  fields:[{id:'what',type:'chips',label:'What do you want to clear?',options:[{v:'pay',t:'Payments only'},{v:'all',t:'Everything'}],value:'pay'}],
+  onSubmit:v=>{
+    if(v.what==='all'){try{localStorage.removeItem(KEY)}catch(e){}location.reload();return}
+    state.txns.forEach(t=>{if(t.date>=state.start){const b=state.buckets.find(x=>x.name===t.bucket);if(b)b.spent=Math.max(0,b.spent-t.amt)}});
+    state.txns=[];state.pending=null;state.merchants={};
+    done('Payments cleared and buckets restored');
+  }});
 if(state.pending)setTimeout(askConfirm,600);
 render();
 </script>
