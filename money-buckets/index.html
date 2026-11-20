@@ -120,6 +120,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .sechead h4{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
 .pill-btn{border:0;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:9px 16px;font:600 14px var(--body);cursor:pointer}
 .loanpage .pill-btn{background:var(--loan)}
+.hero .pill-btn.onhero{background:var(--on-accent);color:var(--loan);align-self:flex-start;margin-top:6px}
 .splitcard{flex-direction:row;align-items:center;justify-content:space-between;flex-wrap:wrap}
 .bhead h2{margin:0}
 .pill-btn.sm{padding:7px 14px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
@@ -365,9 +366,10 @@ if(!state.goals)state.goals=state.example?[
   {id:'g3',name:'Medical',target:null,saved:4500,kept:'Bank',ex:true},
   {id:'g4',name:'Wedding',target:null,saved:30000,kept:'SIP / ETF',ex:true}]:[];
 if(!state.loans)state.loans=state.example?[
-  {id:'l1',name:'Car loan',type:'emi',emi:9500,balance:412000,rate:9.1,updated:'2026-11-05',fromSalary:false,paidCycle:'2026-11-07',paidAmt:9500,ex:true},
-  {id:'l2',name:'Credit card',type:'card',emi:null,balance:6800,rate:42,updated:'2026-11-12',fromSalary:false,ex:true},
-  {id:'l3',name:'Home loan',type:'emi',emi:21000,balance:1850000,rate:8.5,updated:'2026-10-30',fromSalary:true,ex:true}]:[];
+  {id:'l1',name:'Car loan',kind:'EMI',amount:9500,paidCycle:'2026-11-07',paidAmt:9500,ex:true},
+  {id:'l2',name:'Credit card',kind:'Credit card bill',amount:null,ex:true}]:[];
+state.loans=state.loans.filter(l=>!l.fromSalary).map(l=>l.kind?l:{id:l.id,name:l.name,
+  kind:l.type==='card'?'Credit card bill':l.type==='emi'?'EMI':'Interest',amount:l.emi||null,paidCycle:l.paidCycle,paidAmt:l.paidAmt,ex:l.ex});
 const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
 const toNum=v=>Number(String(v).replace(/[^\d]/g,''))||0;
 const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
@@ -469,7 +471,7 @@ function renderAlloc(){
     const m=r.querySelector('.mini');if(ICONS[b.name])m.innerHTML=svg(ICONS[b.name]);else m.textContent=b.name.charAt(0).toUpperCase();
     r.querySelector('.nm span').textContent=b.name;
     let sm=inc.type==='extra'?'Now '+inr(b.planned-b.spent)+' left':(state.example?'':'Last cycle '+inr(b.planned));
-    if(b.name==='Loan EMI'&&emiTotal())sm=(sm?sm+' · ':'')+'Your EMIs '+inr(emiTotal());
+    if(b.name==='Loan EMI'&&emiTotal())sm=(sm?sm+' · ':'')+'Your loans need '+inr(emiTotal());
     r.querySelector('small').textContent=sm;
     const input=r.querySelector('input');input.id='alloc'+i;input.setAttribute('aria-label',b.name+' amount');
     if(inc.alloc[b.name])input.value=inc.alloc[b.name].toLocaleString('en-IN');
@@ -679,112 +681,78 @@ function useGoal(g){openForm({title:'Use money from '+g.name,sub:'In this goal: 
     g.saved-=v.amt;if(v.how==='back')savBucket().spent-=v.amt;
     done(v.how==='back'?inr(v.amt)+' moved back to Savings':inr(v.amt)+' used from '+g.name)}})}
 
-/* Loan pockets inside Loan EMI */
-const LT={emi:'EMI loan',card:'Credit card',od:'Overdraft',cc:'Cash credit'};
-const LICON={emi:ICONS['Loan EMI'],card:'M3 6h18v12H3zM3 10h18M7 15h3',od:'M4 4v16h16M8 15l3-4 3 2 5-6',cc:'M4 4v16h16M8 15l3-4 3 2 5-6'};
-const monthInt=l=>l.balance&&l.rate?l.balance*l.rate/1200:0;
-const emiTotal=()=>state.loans.filter(l=>!l.fromSalary).reduce((a,l)=>a+(l.emi||0),0);
-function monthsLeft(l){
-  if(l.type!=='emi'||!l.balance||!l.emi)return null;
-  const r=(l.rate||0)/1200;if(r===0)return Math.ceil(l.balance/l.emi);
-  if(l.emi<=l.balance*r)return Infinity;
-  return Math.ceil(-Math.log(1-r*l.balance/l.emi)/Math.log(1+r));
-}
-const fmtMonths=n=>n===null?'—':n===Infinity?'EMI too low':n>=12?Math.floor(n/12)+' yr'+(n%12?' '+n%12+' mo':''):n+' mo';
-const curAlloc=l=>l.allocCycle===state.start?(l.alloc||0):0;
-const curPaid=l=>l.paidCycle===state.start?(l.paidAmt||0):0;
-const splitTotal=()=>state.loans.filter(l=>!l.fromSalary).reduce((a,l)=>a+curAlloc(l),0);
-function splitLoans(){
-  const lb=loanBucket(),ls=state.loans.filter(l=>!l.fromSalary);
-  openForm({title:'Split between loans',ok:'Save',
-    sub:'Loan EMI bucket has '+inr(lb.planned)+' this cycle. Give each loan its share.',
-    fields:ls.map(l=>({id:l.id,type:'money',label:l.name+(l.emi?' · EMI '+inr(l.emi):''),value:curAlloc(l)||l.emi||null})),
-    onSubmit:v=>{
-      const sum=ls.reduce((a,l)=>a+(v[l.id]||0),0);
-      if(sum>lb.planned)return 'That adds up to '+inr(sum)+', but the bucket has only '+inr(lb.planned)+'. Lower an amount, or move more money into Loan EMI.';
-      ls.forEach(l=>{l.alloc=v[l.id]||0;l.allocCycle=state.start});
-      done('Loan money split');
-    }});
-}
+/* Loans inside Loan EMI: one main balance, shared out to each loan */
+const KINDS=['EMI','Interest','Credit card bill','Other'];
+const KICON={'EMI':ICONS['Loan EMI'],'Interest':'M19 5L5 19M7 7h.01M17 17h.01','Credit card bill':'M3 6h18v12H3zM3 10h18M7 15h3','Other':'M5 12h.01M12 12h.01M19 12h.01'};
+const held=l=>l.heldCycle===state.start?(l.held||0):0;
+const paidNow=l=>l.paidCycle===state.start?(l.paidAmt||0):0;
+const emiTotal=()=>state.loans.reduce((a,l)=>a+(l.amount||0),0);
+const loanAvail=()=>{const lb=loanBucket();return lb?lb.planned-lb.spent:0};
+const loanMain=()=>loanAvail()-state.loans.reduce((a,l)=>a+held(l),0);
 function renderLoans(){
   sub='loan';$('subPage').className='page loanpage';$('subTitle').textContent='Loans';
   const B=$('subBody');B.innerHTML='';
-  const bal=state.loans.reduce((a,l)=>a+(l.balance||0),0),it=state.loans.reduce((a,l)=>a+monthInt(l),0),lb=loanBucket();
+  const main=loanMain(),inLoans=state.loans.reduce((a,l)=>a+held(l),0);
   const hero=mk('section','hero loan');
-  hero.append(mk('span','label','Total outstanding'),mk('span','big num',inr(bal)));
-  const r=mk('div','row num');r.append(mk('span',null,'EMIs in this app '+inr(emiTotal())),mk('span',null,'Interest about '+inr(it)+' / month'));
-  hero.append(r);B.append(hero);
-  if(lb){
-    const own=state.loans.some(l=>!l.fromSalary),uns=lb.planned-splitTotal();
-    const sc=mk('div','card splitcard'),t=mk('div','ctxt');
-    t.append(mk('b','num','Loan EMI bucket: '+inr(lb.planned)),
-      mk('small','num',!own?'Add a loan to split this money between loans.':uns>0?inr(uns)+' not split between loans yet':'All split between your loans'));
-    sc.append(t);if(own)sc.append(act(splitTotal()?'Change split':'Split between loans',splitLoans,'pill-btn'));
-    B.append(sc);
-    B.append(mk('p','hint','You can split the money now or any time later. Loans cut directly from salary are not counted.'));
-  }
+  hero.append(mk('span','label','Main balance'),mk('span','big num',inr(main)));
+  const r=mk('div','row num');r.append(mk('span',null,'Given to loans '+inr(inLoans)),mk('span',null,'Loan EMI bucket '+inr(loanAvail())));
+  hero.append(r);
+  if(state.loans.length)hero.append(act('Share out to loans',allocLoans,'pill-btn onhero'));
+  B.append(hero);
+  B.append(mk('p','hint','Money you put into Loan EMI lands here first. Share it out to each loan whenever you like.'));
   const sh=mk('div','sechead');sh.append(mk('h4',null,'Your loans'),act('+ Add loan',newLoan,'pill-btn'));B.append(sh);
   if(!state.loans.length){
     const e=mk('div','card empty');
-    e.append(mk('b',null,'No loans added'),mk('span',null,'Add each loan, credit card or overdraft to see its balance, interest and how long is left.'),act('+ Add your first loan',newLoan,'pill-btn'));
+    e.append(mk('b',null,'No loans added'),mk('span',null,'Add each loan EMI, interest payment or credit card bill you pay from this bucket.'),act('+ Add your first loan',newLoan,'pill-btn'));
     B.append(e);return;
   }
   state.loans.forEach(l=>{
     const c=mk('article','card'),top=mk('div','ctop');
-    const ic=mk('span','lic');ic.innerHTML=svg(LICON[l.type]||LICON.emi);top.append(ic);
-    const t=mk('div','ctxt');
-    t.append(mk('b',null,l.name),mk('span','amt num',l.balance!=null?inr(l.balance):'Balance not set'),
-      mk('small',null,l.balance!=null&&l.updated?'Bank balance updated '+fmtDate(l.updated):'Tap Update balance to add it'));
-    top.append(t);c.append(top);
-    const tags=mk('div','tags');tags.append(mk('span','tag loan',LT[l.type]||'Loan'));
-    if(!l.fromSalary&&curAlloc(l))tags.append(mk('span','tag num',inr(Math.max(0,curAlloc(l)-curPaid(l)))+' left of '+inr(curAlloc(l))+' set aside'));
-    const paid=l.paidCycle===state.start;
-    if(l.fromSalary)tags.append(mk('span','tag mute','Cut from salary'));
-    else if(paid)tags.append(mk('span','tag num','Paid '+inr(l.paidAmt||0)+' this cycle'));
-    else if(l.emi)tags.append(mk('span','tag due','Not paid this cycle'));
-    c.append(tags);
-    const facts=mk('div','facts');
-    [['EMI',l.emi?inr(l.emi):'Not set'],['Interest rate',l.rate!=null?l.rate+'% a year':'Not set'],
-     ['Interest per month',monthInt(l)?'about '+inr(monthInt(l)):'—'],['Time left',fmtMonths(monthsLeft(l))]]
-      .forEach(([k,v])=>{const f=mk('div','fact num');f.append(mk('span',null,k),mk('b',null,v));facts.append(f)});
-    c.append(facts);
-    const a=mk('div','cacts');
-    if(!l.fromSalary)a.append(act('Record payment',()=>payLoan(l)));
-    a.append(act('Update balance',()=>updBal(l)),act('Edit',()=>editLoan(l),'ghost'));
+    const ic=mk('span','lic');ic.innerHTML=svg(KICON[l.kind]||KICON.Other);top.append(ic);
+    const t=mk('div','ctxt'),h=held(l),pd=paidNow(l);
+    t.append(mk('b',null,l.name),mk('span','amt num',inr(h)),mk('small','num',(l.amount?l.kind+' '+inr(l.amount):l.kind)+' · kept for this loan'));
+    top.append(t);
+    if(pd)top.append(mk('span','tag num','Paid '+inr(pd)));
+    else if(l.amount&&h<l.amount)top.append(mk('span','tag due num','Needs '+inr(l.amount-h)));
+    c.append(top);
+    const a=mk('div','cacts');a.append(act('Add money',()=>addToLoan(l)),act('Pay',()=>payLoan(l)),act('Edit',()=>editLoan(l),'ghost'));
     c.append(a);B.append(c);
   });
-  B.append(mk('p','hint','Interest and time left are estimates. Update the balance from your bank statement now and then, and the app will use the bank figure.'));
 }
+function allocLoans(){
+  const avail=loanAvail();
+  openForm({title:'Share out to loans',ok:'Save',sub:'Loan EMI bucket has '+inr(avail)+'. Type how much to keep for each loan.',
+    fields:state.loans.map(l=>({id:l.id,type:'money',label:l.name+(l.amount?' · '+l.kind+' '+inr(l.amount):''),value:held(l)||Math.max(0,(l.amount||0)-paidNow(l))||null})),
+    onSubmit:v=>{
+      const sum=state.loans.reduce((a,l)=>a+(v[l.id]||0),0);
+      if(sum>avail)return 'That adds up to '+inr(sum)+', but the bucket has only '+inr(avail)+'. Lower an amount, or move more money into Loan EMI.';
+      state.loans.forEach(l=>{l.held=v[l.id]||0;l.heldCycle=state.start});done('Shared out to loans');
+    }});
+}
+function addToLoan(l){const main=loanMain();openForm({title:'Add to '+l.name,sub:'Main balance: '+inr(main),ok:'Add money',
+  fields:[{id:'amt',type:'money',label:'Amount',value:l.amount&&l.amount>held(l)?Math.min(main,l.amount-held(l))||null:null}],
+  onSubmit:v=>{if(!v.amt)return 'Type an amount.';if(v.amt>main)return 'Only '+inr(main)+' is in the main balance. Move more money into Loan EMI first.';
+    l.held=held(l)+v.amt;l.heldCycle=state.start;done(inr(v.amt)+' added to '+l.name)}})}
+function payLoan(l){const h=held(l);openForm({title:'Pay '+l.name,ok:'Record payment',
+  sub:'Kept for this loan: '+inr(h)+' · Main balance: '+inr(loanMain()),
+  fields:[{id:'amt',type:'money',label:'Amount paid',value:h||l.amount||null}],
+  onSubmit:v=>{if(!v.amt)return 'Type the amount you paid.';
+    const lb=loanBucket();if(lb)lb.spent+=v.amt;
+    l.held=Math.max(0,h-v.amt);l.heldCycle=state.start;
+    l.paidAmt=paidNow(l)+v.amt;l.paidCycle=state.start;done(inr(v.amt)+' paid for '+l.name)}})}
 function loanFields(l){return[
-  {id:'name',type:'text',label:'Name',value:l?l.name:'',ph:'e.g. Car loan, SBI credit card'},
-  {id:'type',type:'chips',label:'Type',options:Object.entries(LT).map(([v,t])=>({v,t})),value:l?l.type:'emi'},
-  {id:'emi',type:'money',label:'Monthly EMI',opt:true,value:l?l.emi:null},
-  {id:'balance',type:'money',label:'Outstanding balance',opt:true,value:l?l.balance:null},
-  {id:'rate',type:'rate',label:'Interest rate (% a year)',opt:true,value:l?l.rate:null},
-  {id:'fromSalary',type:'toggle',label:'Cut directly from my salary, so not counted in buckets',value:l?l.fromSalary:false}]}
+  {id:'name',type:'text',label:'Loan name',value:l?l.name:'',ph:'e.g. Car loan, SBI credit card'},
+  {id:'kind',type:'chips',label:'What do you pay?',options:KINDS.map(k=>({v:k,t:k})),value:l?l.kind:'EMI'},
+  {id:'amount',type:'money',label:'Amount each month',opt:true,value:l?l.amount:null}]}
 function saveLoan(l,v){
   if(!v.name)return 'Give the loan a name.';
   const isNew=!l;l=l||{id:'l'+Date.now()};
-  if(v.balance!=null&&v.balance!==l.balance)l.updated=today();
-  Object.assign(l,{name:v.name,type:v.type||'emi',emi:v.emi||null,balance:v.balance,rate:v.rate,fromSalary:v.fromSalary});
-  if(isNew)state.loans.push(l);
-  done(isNew?'Loan added':'Loan updated');
+  Object.assign(l,{name:v.name,kind:v.kind||'EMI',amount:v.amount||null});
+  if(isNew)state.loans.push(l);done(isNew?'Loan added':'Loan updated');
 }
 function newLoan(){openForm({title:'Add loan',ok:'Add loan',fields:loanFields(),onSubmit:v=>saveLoan(null,v)})}
 function editLoan(l){openForm({title:'Edit loan',ok:'Save',fields:loanFields(l),onSubmit:v=>saveLoan(l,v),
-  delLabel:'Remove this loan',onDelete:()=>{state.loans=state.loans.filter(x=>x!==l);done('Loan removed')}})}
-function payLoan(l){const lb=loanBucket(),left=lb?lb.planned-lb.spent:0;
-  openForm({title:'Record payment',sub:l.name+' · Loan EMI bucket has '+inr(left)+' left',ok:'Record',
-    fields:[{id:'amt',type:'money',label:'Amount paid',value:(curAlloc(l)-curPaid(l)>0?curAlloc(l)-curPaid(l):l.emi)||null}],
-    onSubmit:v=>{if(!v.amt)return 'Type the amount you paid.';
-      if(lb)lb.spent+=v.amt;
-      if(l.balance!=null){const pr=l.type==='emi'?Math.max(0,v.amt-monthInt(l)):v.amt;l.balance=Math.max(0,Math.round(l.balance-pr))}
-      l.paidAmt=(l.paidCycle===state.start?(l.paidAmt||0):0)+v.amt;l.paidCycle=state.start;
-      done('Payment recorded')}})}
-function updBal(l){openForm({title:'Update balance',ok:'Update',
-  sub:'Type the outstanding amount your bank shows for '+l.name+'. The app will use this figure from now on.',
-  fields:[{id:'bal',type:'money',label:'Outstanding balance',value:l.balance}],
-  onSubmit:v=>{if(v.bal==null)return 'Type the balance from your bank.';l.balance=v.bal;l.updated=today();done('Balance updated')}})}
+  delLabel:'Remove this loan',onDelete:()=>{state.loans=state.loans.filter(x=>x!==l);done('Loan removed. Its money is back in the main balance')}})}
 
 /* Pay: amount and bucket here, scan inside the UPI app */
 let pay={},askTimer=null;
