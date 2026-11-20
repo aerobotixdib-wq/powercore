@@ -323,6 +323,50 @@ header{align-items:center}
 .apps{background:var(--surface)}
 .panel{border-radius:24px 24px 0 0}
 .btn{border-radius:14px}
+
+/* ===== Compact, Stitch-like density ===== */
+.wrap{gap:12px;padding-block:12px 118px}
+.logo{width:34px;height:34px;border-radius:10px}.logo svg{width:19px;height:19px}
+.brand h1{font-size:15.5px}
+.pill{font-size:10px;padding:1px 7px;margin-top:2px}
+.hbtn{width:34px;height:34px}.hbtn svg{width:16px;height:16px}
+.greet{flex-direction:row;align-items:center;justify-content:space-between;gap:10px}
+.greet>div{display:flex;flex-direction:column;gap:1px;min-width:0}
+.hello{font-size:20px}
+.greet .cycle{font-size:11.5px}
+.chipnote{flex:none;font-size:10.5px;font-weight:700;color:var(--accent);background:var(--surface);border:1px solid var(--line);box-shadow:var(--shadow);padding:5px 9px;border-radius:999px}
+.note{font-size:11.5px;padding:7px 11px}
+.pendbar{padding:9px 12px;border-radius:14px}.pendbar span{font-size:12.5px}.pendbar b{font-size:12px}
+.summary{padding:14px;gap:9px;border-radius:18px}
+.summary .label{font-size:10.5px}
+.summary .big{font-size:28px}
+.summary .of{font-size:12.5px}
+.summary .bar{height:6px}
+.summary .row{font-size:11px}
+.cashrow{padding:8px 8px 8px 10px;border-radius:14px;gap:9px}
+.cic2{width:30px;height:30px;border-radius:9px}.cic2 svg{width:16px;height:16px}
+.cashtxt small{font-size:9.5px}.cashtxt b{font-size:14.5px}
+.sumbtn{padding:7px 12px;font-size:12px}.sumbtn svg{width:13px;height:13px}
+.sh{font-size:15px}.cnt{font-size:10px;padding:1px 7px}
+.bhead .pill-btn.sm{font-size:12px}.bhead .pill-btn.sm svg{width:14px;height:14px}
+.grid{gap:8px}
+.b{padding:11px 4px 10px;border-radius:14px;gap:1px}
+.ring{width:40px;height:40px;margin-bottom:5px}
+.ring .ic{width:33px;height:33px}
+.ring svg{width:17px;height:17px}
+.b .name{font-size:11.5px;font-weight:700}
+.b .left{font-size:11px}
+.b .pct{font-size:10px}
+.b.over .pct{font-size:9.5px;padding:1px 6px}
+.b.over::after{top:7px;right:7px;width:6px;height:6px}
+.alist{border-radius:16px;padding:0 12px}
+.arow{padding:9px 0;gap:10px}
+.mini{width:32px;height:32px;border-radius:10px}.mini svg{width:16px;height:16px}
+.arow .nm{font-size:12.5px}.arow .nm small{font-size:10.5px}
+.arow .amtr{font-size:13.5px}.amtc small{font-size:10px}
+.act{font-size:10px}.act .ic{height:26px}.act svg{width:21px;height:21px}
+.act.main .ic{width:52px;height:52px;margin-top:-26px}.act.main svg{width:23px;height:23px}
+.actions{padding-top:6px}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -338,7 +382,7 @@ header{align-items:center}
   </header>
   <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
   <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
-  <div class="greet"><h2 class="hello" id="hello">Namaste</h2><span class="cycle" id="cycleLine"></span></div>
+  <div class="greet"><div><h2 class="hello" id="hello">Namaste 👋</h2><span class="cycle" id="cycleLine"></span></div><span class="chipnote" id="nextIn"></span></div>
   <p class="note" id="exNote">Example figures for preview. Tap Income at the bottom to start with your own.</p>
 
   <section class="summary" aria-label="This cycle">
@@ -540,6 +584,7 @@ function render(){
   $('exNote').hidden=!state.example;
   $('cycle').textContent='Day '+day+' of cycle';
   $('cycleLine').textContent='Cycle started '+fmtDate(state.start);
+  {const left=cycleLen()-day;$('nextIn').textContent=left>0?'Next income in ~'+left+(left>1?' days':' day'):'New income due';}
   $('bCount').textContent=state.buckets.length+' active';
   const ut=state.untracked||0;
   $('leftAll').textContent=inr(total-spent-ut);
@@ -1266,7 +1311,7 @@ function renderExtras(){
 $('payBtn').onclick=openPay;
 $('homeTab').onclick=()=>{document.querySelectorAll('.page').forEach(p=>p.hidden=true);sub=null;window.scrollTo({top:0,behavior:'smooth'})};
 $('anTab').onclick=()=>openSub('an');
-(function(){const h=new Date().getHours();$('hello').textContent=h<12?'Good morning':h<17?'Good afternoon':'Good evening'})();
+
 $('resetBtn').onclick=()=>openForm({title:'Clear saved data',ok:'Clear',
   sub:'Payments only: removes all payments and gives the money back to the buckets. Everything: deletes all buckets, payments, goals and loans on this phone. This cannot be undone.',
   fields:[{id:'what',type:'chips',label:'What do you want to clear?',options:[{v:'pay',t:'Payments only'},{v:'all',t:'Everything'}],value:'pay'}],
