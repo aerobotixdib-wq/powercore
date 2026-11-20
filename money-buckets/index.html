@@ -114,6 +114,24 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .hero{background:var(--accent);color:var(--on-accent);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:8px}
 .hero.loan{background:var(--loan)}
 .hero.over{background:var(--danger)}
+.sumbtn{align-self:flex-start;border:0;border-radius:999px;padding:8px 14px;font:600 13px var(--body);background:rgba(255,255,255,.2);color:inherit;cursor:pointer;margin-top:2px}
+.card.pvlist{gap:16px}
+.pv{display:flex;flex-direction:column;gap:6px}
+.pv .t{display:flex;justify-content:space-between;gap:10px;font-size:14px}
+.pv .t span:last-child{color:var(--muted);font-size:13px;white-space:nowrap}
+.pv .bar{height:8px;border-radius:6px;background:var(--track);overflow:hidden}
+.pv .bar i{display:block;height:100%;border-radius:6px;background:var(--accent)}
+.pv.over .bar i{background:var(--danger)}.pv.over .t span:last-child{color:var(--danger);font-weight:600}
+.pv.warn .bar i{background:var(--warn)}.pv small{font-size:12px;color:var(--warn)}
+.ins{display:flex;gap:10px;align-items:flex-start;font-size:14px}
+.ins i{width:8px;height:8px;border-radius:50%;background:var(--danger);flex:none;margin-top:6px}
+.card.trend{flex-direction:row;align-items:flex-end;gap:8px;padding-top:18px}
+.tcol{flex:1;min-width:0;display:flex;flex-direction:column;align-items:center;gap:6px}
+.tcol i{display:block;width:100%;max-width:44px;border-radius:8px 8px 4px 4px;background:var(--accent)}
+.tcol.cur i{background:var(--accent-soft);box-shadow:inset 0 0 0 1.5px var(--accent)}
+.tcol b{font-size:11.5px;white-space:nowrap}.tcol b.neg{color:var(--danger)}.tcol span{font-size:11px;color:var(--muted)}
+.arow.strong .nm>span,.arow.strong .amtr{color:var(--accent)}
+
 .hero .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
 .hero .big{font:700 34px/1.05 var(--display)}
 .hero .row{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;opacity:.92}
@@ -223,6 +241,7 @@ header{align-items:center}
     <span class="of num" id="ofAll"></span>
     <div class="bar"><i id="barAll"></i></div>
     <div class="row num"><span id="cash"></span><span id="unas"></span><span id="spentAll"></span></div>
+    <button type="button" class="sumbtn" id="anBtn">See analysis</button>
   </section>
 
   <div class="sechead bhead"><h2>Buckets</h2><button class="pill-btn sm" id="moveBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Move money</button></div>
@@ -273,6 +292,7 @@ header{align-items:center}
     <section id="step2" hidden>
       <p class="cycle" id="incInfo"></p>
       <button class="linkbtn" id="useLast">Use last cycle's plan</button>
+      <button class="linkbtn" id="useSug">Use suggested plan</button>
       <div class="alist" id="alist"></div>
     </section>
   </div>
@@ -362,6 +382,13 @@ try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.buckets)
 if(state.example===undefined)state.example=true;
 state.unassigned=state.unassigned||0;state.history=state.history||[];
 state.merchants=state.merchants||{};state.pending=state.pending||null;
+if(state.example&&!state.history.length){
+  const mkb=sp=>defaults.map((b,k)=>({name:b.name,planned:b.planned,spent:sp[k]}));
+  state.history=[
+    {start:'2026-08-07',end:'2026-09-07',income:40000,untracked:400,unassigned:0,ex:true,buckets:mkb([7400,4200,9500,4100,2300,2600,1200,1300,0])},
+    {start:'2026-09-07',end:'2026-10-07',income:40000,untracked:250,unassigned:0,ex:true,buckets:mkb([7900,5000,9500,3600,2450,1800,2600,1700,0])},
+    {start:'2026-10-07',end:'2026-11-07',income:40000,untracked:600,unassigned:0,ex:true,buckets:mkb([8300,4600,9500,3300,2380,2500,900,1100,0])}];
+}
 if(!state.txns)state.txns=state.example?[
   {id:'tx3',date:'2026-11-18',amt:640,bucket:'Grocery',name:'Das Grocery',ex:true},
   {id:'tx2',date:'2026-11-17',amt:420,bucket:'Eating out / Online food',name:'Zomato',ex:true},
@@ -508,7 +535,7 @@ $('incNext').onclick=()=>{
     $('incInfo').textContent=inc.type==='new'
       ?'Fill how much goes into each bucket this cycle.'+(carry?' '+inr(carry)+' left over from the current cycle will move to Savings.':'')
       :'Add this extra money to any buckets. Anything you leave stays unassigned.';
-    $('useLast').hidden=inc.type!=='new';
+    $('useLast').hidden=inc.type!=='new';$('useSug').hidden=inc.type!=='new'||!state.history.length;
     $('incNext').textContent='Save';
     renderAlloc();return;
   }
@@ -517,12 +544,14 @@ $('incNext').onclick=()=>{
   if(inc.type==='new'){
     const carry=carryAmount();
     const sav=state.buckets.find(isSav),savLeft=(!state.example&&sav)?Math.max(0,sav.planned-sav.spent):0;
-    if(!state.example)state.history.push({start:state.start,end:today(),buckets:state.buckets.map(b=>({...b})),unassigned:state.unassigned});
+    if(!state.example)state.history.push({start:state.start,end:today(),buckets:state.buckets.map(b=>({...b})),unassigned:state.unassigned,income:state.income,untracked:state.untracked||0});
     state.buckets=state.buckets.map(b=>({name:b.name,planned:(inc.alloc[b.name]||0)+(isSav(b)?savLeft+carry:0),spent:0}));
-    if(state.example){state.goals=state.goals.filter(g=>!g.ex);state.loans=state.loans.filter(l=>!l.ex);state.txns=state.txns.filter(t=>!t.ex)}
-    state.start=today();state.unassigned=left;state.example=false;state.untracked=0;
+    if(state.example){state.goals=state.goals.filter(g=>!g.ex);state.loans=state.loans.filter(l=>!l.ex);state.txns=state.txns.filter(t=>!t.ex);state.history=state.history.filter(h=>!h.ex)}
+    state.start=today();state.unassigned=left;state.example=false;state.untracked=0;state.income=inc.amount;
     save();render();closeIncome();toast(carry?'New cycle started. '+inr(carry)+' moved to Savings':'New cycle started');
+    if(state.history.length)setTimeout(()=>openSub('an:'+(state.history.length-1)),500);
   }else{
+    state.income=incomeOf(cyc(-1))+inc.amount;
     state.buckets.forEach(b=>{b.planned+=inc.alloc[b.name]||0});
     state.unassigned+=left;
     save();render();closeIncome();toast('Extra income added');
@@ -747,6 +776,7 @@ function editLoan(l){openForm({title:'Edit loan',ok:'Save',fields:loanFields(l),
 /* One bucket: what was spent from it */
 function subRender(k){
   if(k==='sav')return renderSavings();if(k==='loan')return renderLoans();if(k==='cash')return renderCash();
+  if(k==='an')return renderAnalysis(-1);if(k&&k.startsWith('an:'))return renderAnalysis(+k.slice(3));
   if(k&&k.startsWith('b:'))return renderBucket(k.slice(2));
 }
 function txRow(t){
@@ -775,6 +805,133 @@ function renderBucket(name){
     const l=mk('div','alist');old.slice(0,20).forEach(t=>l.append(txRow(t)));B.append(l);
   }
 }
+
+/* Analysis: plain maths on your own cycles, no AI */
+function cyc(i){
+  if(i<0)return{cur:true,start:state.start,end:null,buckets:state.buckets,income:state.income,untracked:state.untracked||0,unassigned:state.unassigned};
+  const h=state.history[i];return{cur:false,start:h.start,end:h.end,buckets:h.buckets,income:h.income,untracked:h.untracked||0,unassigned:h.unassigned||0};
+}
+const incomeOf=c=>c.income!=null?c.income:c.buckets.reduce((a,b)=>a+b.planned,0)+(c.unassigned||0);
+const spendOf=c=>c.buckets.filter(b=>b.name!=='Savings').reduce((a,b)=>a+b.spent,0)+(c.untracked||0);
+const txIn=c=>(state.txns||[]).filter(t=>t.date>=c.start&&(!c.end||t.date<c.end));
+const cycLabel=c=>fmtDate(c.start)+' – '+(c.end?fmtDate(c.end):'now');
+function cycleLen(){
+  const h=state.history.filter(x=>x.end);if(!h.length)return 30;
+  return Math.max(7,Math.round(h.reduce((a,x)=>a+(new Date(x.end)-new Date(x.start))/864e5,0)/h.length));
+}
+function suggestPlan(amount){
+  const past=state.history.slice(-3);if(!past.length)return null;
+  const plan={};let sum=0;
+  state.buckets.forEach(b=>{
+    if(b.name==='Savings')return;
+    let v;
+    if(b.name==='Loan EMI'&&emiTotal())v=emiTotal();
+    else{const vals=past.map(h=>{const x=h.buckets.find(y=>y.name===b.name);return x?x.spent:null}).filter(x=>x!=null);
+      v=vals.length?vals.reduce((a,x)=>a+x,0)/vals.length:b.planned}
+    v=Math.round(v/100)*100;plan[b.name]=v;sum+=v;
+  });
+  plan.Savings=Math.max(0,amount-sum);
+  return{plan,sum,short:Math.max(0,sum-amount),n:past.length};
+}
+function renderAnalysis(i){
+  sub=i>=0?'an:'+i:'an';$('subPage').className='page';$('subTitle').textContent='Analysis';
+  const B=$('subBody');B.innerHTML='';const c=cyc(i);
+  if(state.history.length){
+    const ch=mk('div','chips');
+    [-1,...state.history.map((_,k)=>k).reverse()].slice(0,6).forEach(k=>{
+      const b=mk('button','chip',k<0?'This cycle':cycLabel(cyc(k)));b.type='button';b.setAttribute('aria-pressed',k===i);
+      b.onclick=()=>{renderAnalysis(k);$('subPage').scrollTop=0};ch.append(b);
+    });
+    B.append(ch);
+  }
+  if(state.example)B.append(mk('p','note','Example figures. Your own analysis appears after your first full cycle.'));
+  const inc=incomeOf(c),sp=spendOf(c),kept=inc-sp;
+  const hero=mk('section','hero');
+  hero.append(mk('span','label',c.cur?'This cycle so far · day '+(daysSince(state.start)+1):cycLabel(c)),mk('span','big num',inr(sp)+' spent'));
+  const r=mk('div','row num');
+  r.append(mk('span',null,'Income '+inr(inc)),mk('span',null,kept>=0?'Not spent '+inr(kept):'Overspent '+inr(-kept)));
+  if(c.untracked)r.append(mk('span',null,'Untracked cash '+inr(c.untracked)));
+  hero.append(r);B.append(hero);
+
+  /* 1. Planned vs spent */
+  const s1=mk('div','sechead');s1.append(mk('h4',null,'Planned vs spent'));B.append(s1);
+  const card=mk('div','card pvlist');
+  const frac=c.cur?Math.min(1,(daysSince(state.start)+1)/cycleLen()):1;
+  c.buckets.filter(b=>b.name!=='Savings').forEach(b=>{
+    const used=b.planned?b.spent/b.planned:(b.spent?2:0),over=b.spent>b.planned;
+    const fast=c.cur&&b.name!=='Loan EMI'&&!over&&b.planned>0&&used>=.5&&used>frac+.2;
+    const row=mk('div','pv'+(over?' over':fast?' warn':''));
+    const t=mk('div','t');t.append(mk('span',null,b.name),mk('span','num',over?'Over by '+inr(b.spent-b.planned):inr(b.spent)+' of '+inr(b.planned)));
+    const bar=mk('div','bar'),fill=mk('i');fill.style.width=Math.min(100,used*100)+'%';bar.append(fill);
+    row.append(t,bar);
+    if(fast)row.append(mk('small','num','Spending fast: '+Math.round(used*100)+'% used with '+Math.round(frac*100)+'% of the cycle gone'));
+    card.append(row);
+  });
+  B.append(card);
+
+  /* 2. Where the money went */
+  const s2=mk('div','sechead');s2.append(mk('h4',null,'Where the money went'));B.append(s2);
+  const groups={};txIn(c).forEach(t=>{const k=t.name||'Payment';groups[k]=groups[k]||{amt:0,n:0};groups[k].amt+=t.amt;groups[k].n++});
+  const top=Object.entries(groups).sort((a,b)=>b[1].amt-a[1].amt).slice(0,5);
+  if(c.untracked)top.push(['Untracked cash',{amt:c.untracked,n:0}]);
+  if(!top.length)B.append(mk('div','card empty','No payments recorded in this cycle.'));
+  else{const l=mk('div','alist');top.forEach(([name,g])=>{
+    const row=mk('div','arow'),m=mk('span','mini',name.charAt(0).toUpperCase());
+    const nm=mk('span','nm');nm.append(mk('span',null,name),mk('small',null,g.n?g.n+(g.n>1?' payments':' payment'):'Cash you could not account for'));
+    row.append(m,nm,mk('span','amtr num',inr(g.amt)));l.append(row)});B.append(l)}
+
+  /* 3. Repeat overspending */
+  const fin=state.history.slice(-4);
+  if(fin.length>=2){
+    const s3=mk('div','sechead');s3.append(mk('h4',null,'Repeat overspending'));B.append(s3);
+    const ins=mk('div','card');let any=false;
+    state.buckets.filter(b=>b.name!=='Savings').forEach(b=>{
+      const n=fin.filter(h=>{const x=h.buckets.find(y=>y.name===b.name);return x&&x.spent>x.planned}).length;
+      if(n>=2){any=true;const d=mk('div','ins');d.append(mk('i',null),mk('span',null,b.name+' went over in '+n+' of the last '+fin.length+' cycles.'));ins.append(d)}
+    });
+    if(!any)ins.append(mk('span','hint','No bucket went over more than once in the last '+fin.length+' cycles.'));
+    B.append(ins);
+  }
+
+  /* 4. Savings trend */
+  const pts=state.history.slice(-5).map((h,k)=>({c:cyc(state.history.length-Math.min(5,state.history.length)+k)}));
+  pts.push({c:cyc(-1)});
+  if(pts.length>=2){
+    const s4=mk('div','sechead');s4.append(mk('h4',null,'Not spent each cycle'));B.append(s4);
+    const vals=pts.map(p=>incomeOf(p.c)-spendOf(p.c)),mx=Math.max(1,...vals.map(v=>Math.max(0,v)));
+    const tr=mk('div','card trend');
+    pts.forEach((p,k)=>{
+      const v=vals[k],col=mk('div','tcol'+(p.c.cur?' cur':''));
+      const bar=mk('i');bar.style.height=Math.max(3,Math.max(0,v)/mx*100)+'px';
+      col.append(mk('b','num'+(v<0?' neg':''),(v<0?'−':'')+inr(Math.abs(v))),bar,mk('span',null,p.c.cur?'Now':fmtDate(p.c.start)));
+      tr.append(col);
+    });
+    B.append(tr);
+    B.append(mk('p','hint','Income minus spending. Left-over money moves to Savings when a new cycle starts.'));
+  }
+
+  /* 5. Suggested plan */
+  const base=state.income!=null?state.income:incomeOf(cyc(-1));
+  const s=suggestPlan(base);
+  if(s){
+    const s5=mk('div','sechead');s5.append(mk('h4',null,'Suggested plan for next cycle'));B.append(s5);
+    const l=mk('div','alist');
+    state.buckets.forEach(b=>{
+      const row=mk('div','arow'+(b.name==='Savings'?' strong':'')),m=mk('span','mini');
+      if(ICONS[b.name])m.innerHTML=svg(ICONS[b.name]);else m.textContent=b.name.charAt(0).toUpperCase();
+      const nm=mk('span','nm');nm.append(mk('span',null,b.name),mk('small',null,b.name==='Savings'?'Whatever is left':b.name==='Loan EMI'&&emiTotal()?'Your loans\' monthly amounts':'Average of last '+s.n+(s.n>1?' cycles':' cycle')));
+      row.append(m,nm,mk('span','amtr num',inr(s.plan[b.name]||0)));l.append(row);
+    });
+    B.append(l);
+    B.append(mk('p','hint num',s.short?'This plan is '+inr(s.short)+' more than an income of '+inr(base)+'. Cut back some buckets when you add income.':'Based on an income of '+inr(base)+' and what you actually spent. When you add New Income, tap "Use suggested plan" to fill it in.'));
+  }else B.append(mk('p','hint','After your first full cycle, the app will suggest a plan for the next one based on what you actually spent.'));
+}
+$('anBtn').onclick=()=>openSub('an');
+$('useSug').onclick=()=>{
+  const s=suggestPlan(inc.amount);if(!s)return;
+  state.buckets.forEach(b=>{inc.alloc[b.name]=s.plan[b.name]||0});renderAlloc();
+  toast(s.short?'This plan is '+inr(s.short)+' more than your income. Lower some buckets.':'Filled with the suggested plan. Change any amount.');
+};
 
 /* Cash: take cash out, spend it from a bucket, count it weekly */
 const daysSince=d=>Math.floor((Date.now()-new Date(d+'T00:00'))/864e5);
