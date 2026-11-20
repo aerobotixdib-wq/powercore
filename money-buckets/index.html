@@ -391,7 +391,7 @@ header{align-items:center}
   </header>
   <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
   <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
-  <div class="greet"><div><h2 class="hello" id="hello">Namaste 👋</h2><span class="cycle" id="cycleLine"></span></div><span class="chipnote" id="nextIn"></span></div>
+  <div class="greet"><div><h2 class="hello" id="hello">Namaste 👋</h2><span class="cycle" id="cycleLine"></span></div></div>
   <p class="note" id="exNote">Example figures for preview. Tap Income at the bottom to start with your own.</p>
 
   <section class="summary" aria-label="This cycle">
@@ -593,7 +593,6 @@ function render(){
   $('exNote').hidden=!state.example;
   $('cycle').textContent='Day '+day+' of cycle';
   $('cycleLine').textContent='Cycle started '+fmtDate(state.start);
-  {const left=cycleLen()-day;$('nextIn').textContent=left>0?'Next income in ~'+left+(left>1?' days':' day'):'New income due';}
   $('bCount').textContent=state.buckets.length+' active';
   const ut=state.untracked||0;
   $('leftAll').textContent=inr(total-spent-ut);
