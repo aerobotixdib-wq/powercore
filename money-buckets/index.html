@@ -367,6 +367,15 @@ header{align-items:center}
 .act{font-size:10px}.act .ic{height:26px}.act svg{width:21px;height:21px}
 .act.main .ic{width:52px;height:52px;margin-top:-26px}.act.main svg{width:23px;height:23px}
 .actions{padding-top:6px}
+
+.avatar.me{width:36px;height:36px;font:700 15px var(--display);position:relative;border:0;cursor:pointer;box-shadow:var(--shadow);padding:0}
+.avatar.me svg{width:19px;height:19px}
+.mdot{position:absolute;top:-2px;right:-2px;width:11px;height:11px;border-radius:50%;background:var(--danger);border:2px solid var(--bg)}
+.card.profile{flex-direction:row;align-items:center;gap:14px}
+.avatar.big{width:56px;height:56px;font-size:24px}.avatar.big svg{width:28px;height:28px}
+.srow{width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;cursor:pointer;color:inherit;font:inherit}
+.srow:last-child{border-bottom:0}
+.chev{color:var(--muted);display:grid;place-items:center}.chev svg{width:16px;height:16px}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -378,7 +387,7 @@ header{align-items:center}
 <div class="wrap">
   <header>
     <div class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 8zM8 8V6a4 4 0 0 1 8 0v2"/></svg></span><div><h1>Money Buckets</h1><span class="pill" id="cycle"></span></div></div>
-    <div class="hright"><button type="button" class="hbtn" id="resetBtn" aria-label="Clear saved data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>
+    <div class="hright"><button type="button" class="avatar me" id="meBtn" aria-label="Profile and settings"><span id="meInit"></span><i class="mdot" id="meDot" hidden></i></button><button type="button" id="resetBtn" hidden></button></div>
   </header>
   <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
   <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
@@ -936,6 +945,7 @@ function editLoan(l){openForm({title:'Edit loan',ok:'Save',fields:loanFields(l),
 /* One bucket: what was spent from it */
 function subRender(k){
   if(k==='sav')return renderSavings();if(k==='loan')return renderLoans();if(k==='cash')return renderCash();
+  if(k==='me')return renderMe();
   if(k==='an')return renderAnalysis(-1);if(k&&k.startsWith('an:'))return renderAnalysis(+k.slice(3));
   if(k&&k.startsWith('b:'))return renderBucket(k.slice(2));
 }
@@ -1150,6 +1160,32 @@ function countCash(){openForm({title:'Count my cash',ok:'Save',sub:'The app thin
     state.cash=v.amt;state.cashChecked=today();cashLog('count',v.amt);
     done(diff>0?inr(diff)+' went untracked':diff<0?'Cash in hand updated':'Your cash matches');
   }})}
+
+/* Profile & settings */
+function setRow(icon,title,subtxt,tag,fn){
+  const r=mk('button','arow srow');r.type='button';const m=mk('span','mini');m.innerHTML=svg(icon);
+  const nm=mk('span','nm');nm.append(mk('span',null,title),mk('small',null,subtxt));
+  r.append(m,nm);if(tag)r.append(mk('span','tag due',tag));
+  const ch=mk('span','chev');ch.innerHTML=svg('M9 6l6 6-6 6');r.append(ch);r.onclick=fn;return r;
+}
+function renderMe(){
+  sub='me';$('subPage').className='page';$('subTitle').textContent='Profile & settings';
+  const B=$('subBody');B.innerHTML='';
+  const nm0=(state.name||'').trim();
+  const pc=mk('div','card profile');const av=mk('span','avatar big');
+  if(nm0)av.textContent=nm0.charAt(0).toUpperCase();else av.innerHTML=svg('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0');
+  const t=mk('div','ctxt');t.append(mk('b',null,nm0||'Add your name'),mk('small',null,'Your data stays on this phone'));
+  pc.append(av,t);pc.onclick=editName;pc.style.cursor='pointer';B.append(pc);
+  const l=mk('div','alist');
+  const due=cashDue();
+  l.append(setRow(CASHI.count,'Weekly cash check',(due?'Due now · ':'')+'Last counted '+(state.cashChecked?fmtDate(state.cashChecked):'never'),due?'Due':'',countCash));
+  l.append(setRow('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0','Your name',nm0||'Not set',null,editName));
+  l.append(setRow('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3','Clear saved data','Payments only, or everything',null,()=>$('resetBtn').click()));
+  B.append(l);
+}
+function editName(){openForm({title:'Your name',ok:'Save',fields:[{id:'name',type:'text',label:'Name',value:state.name||'',ph:'e.g. Indrajit'}],
+  onSubmit:v=>{state.name=v.name;done(v.name?'Name saved':'Name removed')}})}
+$('meBtn').onclick=()=>openSub('me');
 $('cashBar').onclick=countCash;
 
 /* Pay: amount and bucket here, scan inside the UPI app */
@@ -1296,7 +1332,9 @@ $('paidOther').onclick=()=>{
   recordTxn(p);$('payPage').hidden=true;done(inr(p.amt)+' taken from '+p.bucket);
 };
 function renderExtras(){
-  $('cashBar').hidden=!cashDue();
+  $('cashBar').hidden=true;$('meDot').hidden=!cashDue();
+  const nm0=(state.name||'').trim();$('meInit').innerHTML=nm0?'':svg('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0');if(nm0)$('meInit').textContent=nm0.charAt(0).toUpperCase();
+  $('hello').textContent='Namaste'+(nm0?', '+nm0.split(' ')[0]:'')+' 👋';
   const pb=$('pendBar'),p=state.pending;pb.hidden=!p;
   if(p)pb.querySelector('span').textContent='Waiting: '+inr(p.amt)+' to '+p.name+' from '+p.bucket;
   const rl=$('recentList'),tx=state.txns||[];$('recent').hidden=!tx.length;rl.innerHTML='';
