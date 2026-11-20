@@ -804,7 +804,7 @@ const APPS=[
   {n:'Google Pay',k:'G',pkg:'com.google.android.apps.nbu.paisa.user',ios:'tez://upi/pay?',home:'tez://'},
   {n:'PhonePe',k:'Pe',pkg:'com.phonepe.app',ios:'phonepe://pay?',home:'phonepe://'},
   {n:'Paytm',k:'Pt',pkg:'net.one97.paytm',ios:'paytmmp://pay?',home:'paytmmp://'},
-  {n:'BHIM',k:'B',pkg:'in.org.npci.upiapp',ios:'bhim://upi/pay?',home:'bhim://'}];
+  {n:'BHIM',k:'B',pkg:'in.org.npci.upiapp',ios:'bhim://upi/pay?',home:'bhim:'}];
 const OTHER={n:'Other UPI app',k:'…',pkg:null,ios:'upi://pay?'};
 const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
 function copyText(t){try{return navigator.clipboard.writeText(t)}catch(e){return Promise.reject(e)}}
