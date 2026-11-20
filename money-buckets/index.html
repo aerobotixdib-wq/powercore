@@ -182,6 +182,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cic{width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;align-self:center}.cic svg{width:30px;height:30px}
 .confirm .btn{padding:15px}
 .dangerlink.mutedl{color:var(--muted)}
+.apps.four{grid-template-columns:repeat(4,minmax(0,1fr));gap:18px 4px;padding:18px 6px}
+.apps.four .app .ac{width:54px;height:54px}
+.payee .hbtn{flex:none}
 .hright{display:flex;align-items:center;gap:10px}
 .hbtn{width:38px;height:38px;border-radius:50%;border:0;background:var(--surface);color:var(--muted);box-shadow:0 0 0 1px var(--line);display:grid;place-items:center;cursor:pointer}
 .hbtn svg{width:18px;height:18px}
@@ -296,56 +299,35 @@ header{align-items:center}
   <div class="in">
     <div class="ptop">
       <button class="back" id="payBack" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
-      <h3 id="payTitle">Scan &amp; Pay</h3>
+      <h3>Pay</h3>
     </div>
-    <section id="pStep1">
-      <div class="scanbox">
-        <div class="frame"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></div>
-        <b>Scan the shop's QR code</b>
-        <span>Your camera opens. Take a clear photo with the QR code filling most of the screen.</span>
-        <label class="pill-btn big" for="qrCam">Open camera</label>
-        <input type="file" id="qrCam" accept="image/*" capture="environment" hidden>
+    <section>
+      <label class="flabel" for="pAmt">Amount</label>
+      <input class="bigin num" id="pAmt" inputmode="numeric" placeholder="₹0" autocomplete="off">
+      <span class="flabel">Pay from which bucket?</span>
+      <div class="chips" id="pBuckets"></div>
+      <label class="flabel" for="pTo">Paid to <i>(optional)</i></label>
+      <input class="txtin" id="pTo" maxlength="40" placeholder="e.g. Das Grocery, vegetables" autocomplete="off">
+      <div class="payee" id="pPayee" hidden>
+        <span class="avatar" id="pAv"></span>
+        <div class="ctxt"><b id="pName"></b><span id="pUpi"></span></div>
+        <button type="button" class="hbtn" id="pClear" aria-label="Remove scanned QR"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       </div>
+      <p class="hint" id="pPayeeNote" hidden></p>
+    </section>
+    <section>
+      <div class="sechead"><h4>Pay with</h4></div>
+      <div class="apps four" id="appList"></div>
+      <p class="hint" id="pHow"></p>
       <div class="altrow">
-        <label class="linkbtn" for="qrGal">Pick QR photo from gallery</label>
-        <input type="file" id="qrGal" accept="image/*" hidden>
-        <button type="button" class="linkbtn" id="typeUpi">Type UPI ID</button>
+        <label class="linkbtn" for="qrCam">Shop QR? Scan it here</label>
+        <input type="file" id="qrCam" accept="image/*" capture="environment" hidden>
+        <button type="button" class="linkbtn" id="paidOther">I paid another way</button>
       </div>
       <span class="err" id="pErr"></span>
     </section>
-    <section id="pStep2" hidden>
-      <div class="payee"><span class="avatar" id="pAv"></span><div class="ctxt"><b id="pName"></b><span id="pUpi"></span></div></div>
-      <label class="flabel" for="pAmt">Amount</label>
-      <input class="bigin num" id="pAmt" inputmode="numeric" placeholder="₹0" autocomplete="off">
-      <span class="hint" id="pAmtNote" hidden>The amount is fixed by the shop's QR code.</span>
-      <span class="flabel">Pay from which bucket?</span>
-      <div class="chips" id="pBuckets"></div>
-      <span class="hint" id="pRemember" hidden>Picked the bucket you used last time for this shop.</span>
-      <label class="flabel" for="pNote">Note <i>(optional)</i></label>
-      <input class="txtin" id="pNote" maxlength="40" placeholder="e.g. Vegetables, medicine" autocomplete="off">
-    </section>
-    <section id="pStep3" hidden>
-      <div class="paysum"><span class="big num" id="sAmt"></span><span id="sTo"></span></div>
-      <div class="card steps" id="p2pNote" hidden>
-        <b>Personal UPI ID: pay in 3 steps</b>
-        <ol>
-          <li>Tap your app below. The UPI ID <b id="p2pUpi"></b> is copied for you.</li>
-          <li>In the app, paste the UPI ID or scan the QR, and pay <b id="p2pAmt"></b>.</li>
-          <li>Come back here and tap <b>Yes, payment done</b>.</li>
-        </ol>
-        <span class="hint">For safety, Google Pay and some other apps block personal payments that another app fills in. Shop QR codes open with the amount already filled.</span>
-      </div>
-      <div class="sechead"><h4 id="appHead">Open your UPI app to pay</h4></div>
-      <div class="apps" id="appList"></div>
-      <p class="hint">Pay in the app, then come back here. Before taking money from your bucket, this app will ask whether the payment went through.</p>
-      <div class="altrow">
-        <button type="button" class="linkbtn" id="copyUpi">Copy UPI ID</button>
-        <button type="button" class="linkbtn" id="tryFill" hidden>Try with amount filled in</button>
-        <button type="button" class="linkbtn" id="paidOther">I paid another way</button>
-      </div>
-    </section>
   </div>
-  <div class="pfoot" id="payFoot" hidden><div class="in2"><div class="counter num" id="payInfo"></div><button class="btn primary" id="payNext">Next</button></div></div>
+  <div class="pfoot"><div class="in2"><div class="counter num" id="payInfo"></div></div></div>
 </div>
 
 <div class="sheet" id="cSheet" hidden>
@@ -779,23 +761,79 @@ function updBal(l){openForm({title:'Update balance',ok:'Update',
   fields:[{id:'bal',type:'money',label:'Outstanding balance',value:l.balance}],
   onSubmit:v=>{if(v.bal==null)return 'Type the balance from your bank.';l.balance=v.bal;l.updated=today();done('Balance updated')}})}
 
-/* Scan & Pay */
-let pay={step:1},askTimer=null;
+/* Pay: amount and bucket here, scan inside the UPI app */
+let pay={},askTimer=null;
 const APPS=[
   {n:'Google Pay',k:'G',pkg:'com.google.android.apps.nbu.paisa.user',ios:'tez://upi/pay?',home:'tez://'},
   {n:'PhonePe',k:'Pe',pkg:'com.phonepe.app',ios:'phonepe://pay?',home:'phonepe://'},
   {n:'Paytm',k:'Pt',pkg:'net.one97.paytm',ios:'paytmmp://pay?',home:'paytmmp://'},
-  {n:'BHIM',k:'B',pkg:'in.org.npci.upiapp',ios:'bhim://upi/pay?',home:'bhim://'},
-  {n:'Any UPI app',k:'…',pkg:null,ios:'upi://pay?',home:null}];
+  {n:'BHIM',k:'B',pkg:'in.org.npci.upiapp',ios:'bhim://upi/pay?',home:'bhim://'}];
+const OTHER={n:'Other UPI app',k:'…',pkg:null,ios:'upi://pay?'};
 const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
-function openPay(){pay={step:1};$('pErr').textContent='';showPayStep(1);$('payPage').hidden=false;$('payPage').scrollTop=0}
-function showPayStep(n){
-  pay.step=n;['pStep1','pStep2','pStep3'].forEach((id,i)=>$(id).hidden=i+1!==n);
-  $('payFoot').hidden=n!==2;
-  $('payTitle').textContent=n===1?'Scan & Pay':n===2?'Payment details':'Pay';
-  if(n===2)renderPayDetails();if(n===3)renderPayApps();
+function copyText(t){try{return navigator.clipboard.writeText(t)}catch(e){return Promise.reject(e)}}
+function openPay(){
+  pay={payee:null,amt:0,bucket:''};
+  $('pAmt').value='';$('pTo').value='';$('pErr').textContent='';
+  renderPay();$('payPage').hidden=false;$('payPage').scrollTop=0;$('pAmt').focus();
 }
-$('payBack').onclick=()=>{if(pay.step>1)showPayStep(pay.step-1);else $('payPage').hidden=true};
+$('payBack').onclick=()=>{$('payPage').hidden=true};
+function renderPay(){
+  const p=pay.payee;
+  $('pPayee').hidden=!p;
+  if(p){
+    const nm=p.pn||'UPI payment';
+    $('pAv').textContent=nm.charAt(0).toUpperCase();$('pName').textContent=nm;
+    $('pUpi').textContent=(p.merchant?'Shop QR · ':'Personal QR · ')+p.pa;
+  }
+  $('pPayeeNote').hidden=!p||p.merchant;
+  $('pPayeeNote').textContent="This is a personal QR, so your UPI app can't fill it in. Scan the same QR in your UPI app. Its UPI ID is also copied when you tap the app, so you can paste it instead.";
+  $('pAmt').readOnly=!!(p&&p.am);
+  const ch=$('pBuckets');ch.innerHTML='';
+  state.buckets.filter(b=>b.name!=='Savings').forEach(b=>{
+    const lf=b.planned-b.spent,c=mk('button','chip',b.name+' · '+(lf<0?'over '+inr(-lf):inr(lf)));c.type='button';c.setAttribute('aria-pressed',b.name===pay.bucket);
+    c.onclick=()=>{pay.bucket=b.name;ch.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed','false'));c.setAttribute('aria-pressed','true');$('pErr').textContent='';payFoot()};
+    ch.append(c);
+  });
+  payFoot();
+}
+$('pAmt').oninput=()=>{pay.amt=toNum($('pAmt').value);$('pErr').textContent='';payFoot()};
+$('pAmt').onblur=()=>{if(!$('pAmt').readOnly){const v=toNum($('pAmt').value);$('pAmt').value=v?'₹'+v.toLocaleString('en-IN'):''}};
+$('pClear').onclick=()=>{pay.payee=null;renderPay()};
+function payFoot(){
+  const b=state.buckets.find(x=>x.name===pay.bucket),c=$('payInfo');
+  if(!b){c.className='counter';c.replaceChildren(document.createTextNode('Choose a bucket'),mk('b',null,'to pay from'))}
+  else{const left=b.planned-b.spent-pay.amt;c.className='counter num'+(left<0?' over':'');
+    c.replaceChildren(document.createTextNode(left<0?b.name+' will be over by':b.name+' left after this'),mk('b',null,inr(Math.abs(left))))}
+  renderApps();
+}
+function payErr(){if(!(pay.amt>0))return 'Type the amount first.';if(!pay.bucket)return 'Choose a bucket to pay from.';return ''}
+function payQuery(){
+  const sp=new URLSearchParams(pay.payee.raw);
+  if(!sp.get('am'))sp.set('am',pay.amt.toFixed(2));
+  if(!sp.get('cu'))sp.set('cu','INR');
+  return sp.toString().replace(/\+/g,'%20').replace(/%40/g,'@');
+}
+const homeLink=a=>isIOS?a.home:'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+a.pkg+';end';
+function renderApps(){
+  const p=pay.payee,filled=!!(p&&p.merchant&&pay.amt>0),box=$('appList');box.innerHTML='';
+  const order=[...APPS].sort((a,b)=>(b.n===state.lastApp)-(a.n===state.lastApp));
+  const list=filled?[...order,OTHER]:order,q=filled?payQuery():'';
+  list.forEach(a=>{
+    const l=mk('a','app');
+    l.href=filled?(isIOS?a.ios+q:(a.pkg?'intent://pay?'+q+'#Intent;scheme=upi;package='+a.pkg+';end':'upi://pay?'+q)):homeLink(a);
+    l.append(mk('span','ac',a.k),mk('span',null,a.n));
+    l.onclick=e=>{
+      const err=payErr();if(err){e.preventDefault();$('pErr').textContent=err;return}
+      if(p&&!p.merchant)copyText(p.pa).catch(()=>{});
+      if(a!==OTHER)state.lastApp=a.n;
+      startPending(a.n);
+    };
+    box.append(l);
+  });
+  $('pHow').textContent=filled
+    ?'Your UPI app opens with '+inr(pay.amt)+' to '+(p.pn||p.pa)+' filled in. Pay there, then come back here and tap Yes.'
+    :'Your UPI app opens. Scan the QR code there and pay, then come back here and tap Yes.';
+}
 function parseUpi(t){
   t=String(t||'').trim();if(!/^upi:\/\/pay/i.test(t))return null;
   const q=t.split('?')[1]||'',sp=new URLSearchParams(q),pa=sp.get('pa');
@@ -819,78 +857,25 @@ async function decodeFile(file){
     return null;
   }finally{URL.revokeObjectURL(url)}
 }
-async function onQrFile(e){
+$('qrCam').onchange=async e=>{
   const f=e.target.files[0];e.target.value='';if(!f)return;
   $('pErr').textContent='Reading the QR code…';
   let txt=null;try{txt=await decodeFile(f)}catch(err){}
   if(!txt){$('pErr').textContent="Couldn't find a QR code in that photo. Hold the phone steady, fill the screen with the QR code and try again.";return}
   const p=parseUpi(txt);
   if(!p){$('pErr').textContent='This QR code is not a UPI payment code.';return}
-  $('pErr').textContent='';startDetails(p);
+  $('pErr').textContent='';pay.payee=p;
+  if(p.am){pay.amt=p.am;$('pAmt').value='₹'+p.am.toLocaleString('en-IN')}
+  if(p.pn&&!$('pTo').value.trim())$('pTo').value=p.pn;
+  if(!pay.bucket&&state.merchants[p.pa])pay.bucket=state.merchants[p.pa];
+  renderPay();
+};
+function newPending(app){
+  const p=pay.payee;
+  return{id:'t'+Date.now(),amt:pay.amt,bucket:pay.bucket,name:$('pTo').value.trim()||(p&&(p.pn||p.pa))||'UPI payment',pa:p?p.pa:'',note:'',app};
 }
-$('qrCam').onchange=onQrFile;$('qrGal').onchange=onQrFile;
-$('typeUpi').onclick=()=>openForm({title:'Pay to a UPI ID',ok:'Next',
-  fields:[{id:'pa',type:'text',label:'UPI ID',ph:'e.g. shopname@okaxis'},{id:'pn',type:'text',label:'Name',opt:true,ph:'e.g. Ramesh Store'}],
-  onSubmit:v=>{if(!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v.pa))return 'Type a valid UPI ID, like name@bank.';
-    const sp=new URLSearchParams();sp.set('pa',v.pa);if(v.pn)sp.set('pn',v.pn);
-    startDetails({raw:sp.toString(),pa:v.pa,pn:v.pn,am:null,merchant:false})}});
-function startDetails(p){pay.forceFill=false;pay.payee=p;pay.amt=p.am||0;pay.bucket=state.merchants[p.pa]||'';pay.note='';showPayStep(2)}
-function renderPayDetails(){
-  const p=pay.payee,nm=p.pn||'UPI payment';
-  $('pAv').textContent=nm.charAt(0).toUpperCase();$('pName').textContent=nm;$('pUpi').textContent=p.pa;
-  const a=$('pAmt');a.value=pay.amt?'₹'+pay.amt.toLocaleString('en-IN'):'';a.readOnly=!!p.am;$('pAmtNote').hidden=!p.am;
-  const ch=$('pBuckets');ch.innerHTML='';
-  state.buckets.filter(b=>b.name!=='Savings').forEach(b=>{
-    const c=mk('button','chip',b.name+' · '+inr(b.planned-b.spent));c.type='button';c.setAttribute('aria-pressed',b.name===pay.bucket);
-    c.onclick=()=>{pay.bucket=b.name;ch.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed','false'));c.setAttribute('aria-pressed','true');payFoot()};
-    ch.append(c);
-  });
-  $('pRemember').hidden=!state.merchants[p.pa];
-  $('pNote').value=pay.note||'';payFoot();if(!p.am)a.focus();
-}
-$('pAmt').oninput=()=>{pay.amt=toNum($('pAmt').value);payFoot()};
-$('pAmt').onblur=()=>{if(!$('pAmt').readOnly){const v=toNum($('pAmt').value);$('pAmt').value=v?'₹'+v.toLocaleString('en-IN'):''}};
-function payFoot(){
-  const b=state.buckets.find(x=>x.name===pay.bucket),c=$('payInfo');
-  if(!b){c.className='counter';c.replaceChildren(document.createTextNode('Choose a bucket'),mk('b',null,'to pay from'))}
-  else{const left=b.planned-b.spent-pay.amt;c.className='counter num'+(left<0?' over':'');
-    c.replaceChildren(document.createTextNode(left<0?b.name+' will be over by':b.name+' left after this'),mk('b',null,inr(Math.abs(left))))}
-  $('payNext').disabled=!(b&&pay.amt>0);
-}
-$('payNext').onclick=()=>{pay.note=$('pNote').value.trim();showPayStep(3)};
-function payQuery(){
-  const sp=new URLSearchParams(pay.payee.raw);
-  if(!sp.get('am'))sp.set('am',pay.amt.toFixed(2));
-  if(!sp.get('cu'))sp.set('cu','INR');
-  if(pay.note&&!sp.get('tn'))sp.set('tn',pay.note);
-  return sp.toString().replace(/\+/g,'%20').replace(/%40/g,'@');
-}
-function copyText(t){try{return navigator.clipboard.writeText(t)}catch(e){return Promise.reject(e)}}
-function homeLink(a){
-  const sp=new URLSearchParams(pay.payee.raw);sp.delete('am');
-  const q=sp.toString().replace(/\+/g,'%20').replace(/%40/g,'@');
-  if(isIOS)return a.home||'upi://pay?'+q;
-  return a.pkg?'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+a.pkg+';end':'upi://pay?'+q;
-}
-function renderPayApps(){
-  const p=pay.payee,direct=p.merchant||pay.forceFill;
-  $('sAmt').textContent=inr(pay.amt);$('sTo').textContent='to '+(p.pn||p.pa)+' · from '+pay.bucket;
-  $('p2pNote').hidden=direct;$('tryFill').hidden=direct;
-  $('p2pUpi').textContent=p.pa;$('p2pAmt').textContent=inr(pay.amt);
-  $('appHead').textContent=direct?'Open your UPI app to pay':'Tap your UPI app';
-  const box=$('appList');box.innerHTML='';const q=payQuery();
-  APPS.forEach(a=>{
-    const l=mk('a','app');
-    l.href=direct?(isIOS?a.ios+q:(a.pkg?'intent://pay?'+q+'#Intent;scheme=upi;package='+a.pkg+';end':'upi://pay?'+q)):homeLink(a);
-    l.append(mk('span','ac',a.k),mk('span',null,a.n));
-    l.onclick=()=>{if(!direct)copyText(p.pa).catch(()=>{});startPending(a.n)};
-    box.append(l);
-  });
-}
-$('tryFill').onclick=()=>{pay.forceFill=true;renderPayApps()};
-function newPending(app){return{id:'t'+Date.now(),amt:pay.amt,bucket:pay.bucket,name:pay.payee.pn||pay.payee.pa,pa:pay.payee.pa,note:pay.note,app}}
 function startPending(app){
-  state.pending=newPending(app);state.merchants[pay.payee.pa]=pay.bucket;save();
+  state.pending=newPending(app);if(pay.payee)state.merchants[pay.payee.pa]=pay.bucket;save();
   clearTimeout(askTimer);askTimer=setTimeout(()=>{$('payPage').hidden=true;render();askConfirm()},4000);
 }
 document.addEventListener('visibilitychange',()=>{
@@ -898,8 +883,8 @@ document.addEventListener('visibilitychange',()=>{
 });
 function askConfirm(){
   const p=state.pending;if(!p)return;
-  $('cTitle').textContent='Did '+inr(p.amt)+' reach '+p.name+'?';
-  $('cSub').textContent='Check your payment app. If it says successful, tap Yes and '+inr(p.amt)+' will come off '+p.bucket+'.';
+  $('cTitle').textContent='Did your payment of '+inr(p.amt)+' go through?';
+  $('cSub').textContent=(p.name!=='UPI payment'?'To '+p.name+'. ':'')+'Check your payment app. If it says successful, tap Yes and '+inr(p.amt)+' will come off '+p.bucket+'.';
   $('cSheet').hidden=false;
 }
 function recordTxn(p){
@@ -911,8 +896,11 @@ $('cYes').onclick=()=>{const p=state.pending;state.pending=null;$('cSheet').hidd
 $('cNo').onclick=()=>{state.pending=null;$('cSheet').hidden=true;done('Nothing deducted')};
 $('cWait').onclick=()=>{$('cSheet').hidden=true;render()};
 $('pendBar').onclick=askConfirm;
-$('paidOther').onclick=()=>{const p=newPending('Other');state.merchants[pay.payee.pa]=pay.bucket;recordTxn(p);$('payPage').hidden=true;done(inr(p.amt)+' taken from '+p.bucket)};
-$('copyUpi').onclick=()=>{const t=pay.payee.pa;try{navigator.clipboard.writeText(t).then(()=>toast('UPI ID copied'),()=>toast('UPI ID: '+t))}catch(e){toast('UPI ID: '+t)}};
+$('paidOther').onclick=()=>{
+  const err=payErr();if(err){$('pErr').textContent=err;return}
+  const p=newPending('Other');if(pay.payee)state.merchants[pay.payee.pa]=pay.bucket;
+  recordTxn(p);$('payPage').hidden=true;done(inr(p.amt)+' taken from '+p.bucket);
+};
 function renderExtras(){
   const pb=$('pendBar'),p=state.pending;pb.hidden=!p;
   if(p)pb.querySelector('span').textContent='Waiting: '+inr(p.amt)+' to '+p.name+' from '+p.bucket;
