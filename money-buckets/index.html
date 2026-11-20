@@ -590,7 +590,7 @@ function render(){
   const spent=state.buckets.reduce((a,b)=>a+b.spent,0);
   const day=Math.max(1,Math.floor((Date.now()-new Date(state.start+'T00:00'))/864e5)+1);
   const total=planned+state.unassigned;
-  $('exNote').hidden=!state.example;
+  $('exNote').hidden=true;
   $('cycle').textContent='Day '+day+' of cycle';
   $('cycleLine').textContent='Cycle started '+fmtDate(state.start);
   $('bCount').textContent=state.buckets.length+' active';
