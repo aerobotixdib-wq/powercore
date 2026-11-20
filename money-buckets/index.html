@@ -113,6 +113,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .subbody{display:flex;flex-direction:column;gap:14px}
 .hero{background:var(--accent);color:var(--on-accent);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:8px}
 .hero.loan{background:var(--loan)}
+.hero.over{background:var(--danger)}
 .hero .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
 .hero .big{font:700 34px/1.05 var(--display)}
 .hero .row{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;opacity:.92}
@@ -225,7 +226,7 @@ header{align-items:center}
   </section>
 
   <div class="sechead bhead"><h2>Buckets</h2><button class="pill-btn sm" id="moveBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Move money</button></div>
-  <p class="hint">Tap <b>Savings</b> for your goal pockets and <b>Loan EMI</b> for your loans.</p>
+  <p class="hint">Tap a bucket to see what you spent from it. <b>Savings</b> opens your goals and <b>Loan EMI</b> your loans.</p>
   <div class="grid" id="grid"></div>
   <section class="recent" id="recent" hidden>
     <div class="sechead"><h4>Recent payments</h4></div>
@@ -413,7 +414,7 @@ function render(){
     const left=b.planned-b.spent, used=b.planned?b.spent/b.planned:0;
     const sv=b.name==='Savings',ln=b.name==='Loan EMI';
     const el=document.createElement('article');
-    el.className='b'+(sv?'':left<0?' over':used>=.85?' warn':'')+(sv||ln?' tap':'');
+    el.className='b tap'+(sv?'':left<0?' over':used>=.85?' warn':'');
     el.innerHTML=`<div class="ring"><span class="ic"></span></div><span class="left num"></span><span class="name"></span>`;
     el.querySelector('.ring').style.setProperty('--p',sv?0:Math.min(100,used*100));
     if(sv||ln){
@@ -421,6 +422,10 @@ function render(){
       el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label','Open '+(sv?'savings goals':'loans'));
       el.onclick=()=>openSub(sv?'sav':'loan');
       el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSub(sv?'sav':'loan')}};
+    }else{
+      el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label','Open '+b.name);
+      el.onclick=()=>openSub('b:'+b.name);
+      el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSub('b:'+b.name)}};
     }
     const ic=el.querySelector('.ic');
     if(ICONS[b.name])ic.innerHTML=svg(ICONS[b.name]);else ic.textContent=b.name.charAt(0).toUpperCase();
@@ -556,8 +561,8 @@ const loanBucket=()=>state.buckets.find(b=>b.name==='Loan EMI');
 const freeSav=()=>{const s=savBucket();return s?s.planned-s.spent:0};
 let sub=null;
 function done(msg){save();render();refreshSub();if(msg)toast(msg)}
-function openSub(k){({sav:renderSavings,loan:renderLoans,cash:renderCash})[k]();$('subPage').hidden=false;$('subPage').scrollTop=0}
-function refreshSub(){if($('subPage').hidden)return;({sav:renderSavings,loan:renderLoans,cash:renderCash})[sub]()}
+function openSub(k){subRender(k);$('subPage').hidden=false;$('subPage').scrollTop=0}
+function refreshSub(){if($('subPage').hidden)return;subRender(sub)}
 $('subBack').onclick=()=>{$('subPage').hidden=true;sub=null};
 
 /* Form sheet */
@@ -738,6 +743,38 @@ function saveLoan(l,v){
 function newLoan(){openForm({title:'Add loan',ok:'Add loan',fields:loanFields(),onSubmit:v=>saveLoan(null,v)})}
 function editLoan(l){openForm({title:'Edit loan',ok:'Save',fields:loanFields(l),onSubmit:v=>saveLoan(l,v),
   delLabel:'Remove this loan',onDelete:()=>{state.loans=state.loans.filter(x=>x!==l);done('Loan removed')}})}
+
+/* One bucket: what was spent from it */
+function subRender(k){
+  if(k==='sav')return renderSavings();if(k==='loan')return renderLoans();if(k==='cash')return renderCash();
+  if(k&&k.startsWith('b:'))return renderBucket(k.slice(2));
+}
+function txRow(t){
+  const r=mk('div','arow'),m=mk('span','mini');
+  if(t.app==='Cash')m.innerHTML=svg('M2.5 6h19v12h-19zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zM6 9.5v5M18 9.5v5');
+  else if(ICONS[t.bucket])m.innerHTML=svg(ICONS[t.bucket]);else m.textContent=t.bucket.charAt(0).toUpperCase();
+  const nm=mk('span','nm');nm.append(mk('span',null,t.name),mk('small',null,fmtDate(t.date)+' · '+(t.app==='Cash'?'Cash':'UPI')));
+  r.append(m,nm,mk('span','amtr num','−'+inr(t.amt)));return r;
+}
+function renderBucket(name){
+  const b=state.buckets.find(x=>x.name===name);if(!b){$('subPage').hidden=true;return}
+  sub='b:'+name;$('subPage').className='page';$('subTitle').textContent=name;
+  const B=$('subBody');B.innerHTML='';
+  const left=b.planned-b.spent;
+  const hero=mk('section','hero'+(left<0?' over':''));
+  hero.append(mk('span','label','Left this cycle'),mk('span','big num',left<0?'Over by '+inr(-left):inr(left)));
+  const r=mk('div','row num');r.append(mk('span',null,'Planned '+inr(b.planned)),mk('span',null,'Spent '+inr(b.spent)));
+  hero.append(r);B.append(hero);
+  const tx=(state.txns||[]).filter(t=>t.bucket===name),cur=tx.filter(t=>t.date>=state.start),old=tx.filter(t=>t.date<state.start);
+  const sh=mk('div','sechead');sh.append(mk('h4',null,'This cycle')); B.append(sh);
+  if(!cur.length){const e=mk('div','card empty');e.append(mk('span',null,'Nothing spent from this bucket yet in this cycle.'));B.append(e)}
+  else{const l=mk('div','alist');cur.forEach(t=>l.append(txRow(t)));B.append(l)}
+  if(state.example){const listed=cur.reduce((a,t)=>a+t.amt,0);if(b.spent>listed)B.append(mk('p','hint num','The example figures include '+inr(b.spent-listed)+' of spending that is not listed here.'))}
+  if(old.length){
+    const s2=mk('div','sechead');s2.append(mk('h4',null,'Earlier cycles'));B.append(s2);
+    const l=mk('div','alist');old.slice(0,20).forEach(t=>l.append(txRow(t)));B.append(l);
+  }
+}
 
 /* Cash: take cash out, spend it from a bucket, count it weekly */
 const daysSince=d=>Math.floor((Date.now()-new Date(d+'T00:00'))/864e5);
