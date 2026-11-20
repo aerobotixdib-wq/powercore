@@ -1,0 +1,928 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Money Buckets">
+<meta name="theme-color" content="#0E6B5C">
+<title>Money Buckets</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<style>
+/* Layout: one phone-width column — cycle summary, bucket grid, fixed action bar at the bottom */
+:root{
+  --bg:#F3F6F4; --surface:#FFFFFF; --ink:#15211C; --muted:#5E6D66; --line:#DCE4E0;
+  --accent:#0E6B5C; --accent-soft:#DDEFEA; --warn:#B7791F; --danger:#C2412D; --track:#E7EDEA;
+  --on-accent:#FFFFFF; --loan:#3D4FA0; --loan-soft:#E4E8F7;
+  --display:'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
+  --body:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0F1613; --surface:#18221E; --ink:#E6EEEA; --muted:#93A39C; --line:#2A3832;
+  --accent:#4FC2A8; --accent-soft:#1D3A33; --warn:#E0A54A; --danger:#EF7A66; --track:#25322D; --on-accent:#0F1613; --loan:#93A5F2; --loan-soft:#232A47; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1613; --surface:#18221E; --ink:#E6EEEA; --muted:#93A39C; --line:#2A3832;
+  --accent:#4FC2A8; --accent-soft:#1D3A33; --warn:#E0A54A; --danger:#EF7A66; --track:#25322D; --on-accent:#0F1613; --loan:#93A5F2; --loan-soft:#232A47; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 140px;display:flex;flex-direction:column;gap:18px}
+.num{font-variant-numeric:tabular-nums}
+header{display:flex;justify-content:space-between;align-items:baseline;gap:12px}
+h1{font-family:var(--display);font-size:22px;margin:0;letter-spacing:-.01em}
+.cycle{font-size:13px;color:var(--muted)}
+.note{font-size:12.5px;color:var(--muted);background:var(--accent-soft);border-radius:10px;padding:8px 12px}
+.summary{background:var(--accent);color:#fff;border-radius:18px;padding:18px;display:flex;flex-direction:column;gap:10px}
+:root[data-theme="dark"] .summary{color:#0F1613}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .summary{color:#0F1613}}
+.summary .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+.summary .big{font-family:var(--display);font-size:38px;line-height:1.05}
+.summary .of{font-size:14px;opacity:.9}
+.summary .bar{height:6px;border-radius:6px;background:rgba(255,255,255,.28);overflow:hidden}
+.summary .bar i{display:block;height:100%;background:currentColor;opacity:.9}
+.summary .row{display:flex;justify-content:space-between;font-size:13px;opacity:.92;gap:8px;flex-wrap:wrap}
+h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);margin:4px 0 -6px;font-weight:600}
+.grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px 8px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:20px 10px}
+.b{display:flex;flex-direction:column;align-items:center;text-align:center;gap:5px;min-width:0;background:none;border:0;padding:0;font:inherit;color:inherit}
+.ring{--p:0;--c:var(--accent);width:68px;height:68px;border-radius:50%;background:conic-gradient(var(--c) calc(var(--p) * 1%),var(--track) 0);display:grid;place-items:center}
+.ring .ic{width:56px;height:56px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font:700 21px var(--display)}
+.ring svg{width:25px;height:25px}
+.b .left{font-family:var(--display);font-size:15.5px;line-height:1.1;margin-top:3px}
+.b .name{font-size:12px;font-weight:500;line-height:1.25;color:var(--muted)}
+.b.warn .ring{--c:var(--warn)} .b.warn .left{color:var(--warn)}
+.b.over .ring{--c:var(--danger)} .b.over .left{color:var(--danger)} .b.over .ic{color:var(--danger)}
+.add{cursor:pointer}
+.add .ring{background:none;border:2px dashed var(--line)} .add .ic{background:transparent;color:var(--muted)}
+.add:hover .ring,.add:focus-visible .ring{border-color:var(--accent)} .add:hover .ic,.add:focus-visible .ic{color:var(--accent)}
+.add:focus-visible{outline:none}
+.track i{display:block}
+.actions{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding-top:10px;padding-bottom:calc(10px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.actions .in{max-width:560px;margin:0 auto;display:flex;justify-content:space-around;align-items:flex-end}
+.act{background:none;border:0;display:flex;flex-direction:column;align-items:center;gap:6px;font:600 12.5px var(--body);color:var(--ink);cursor:pointer;min-width:84px;padding:0}
+.act .ic{width:52px;height:52px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center}
+.act.main .ic{width:70px;height:70px;background:var(--accent);color:var(--surface);margin-top:-34px;border:5px solid var(--surface);box-shadow:0 6px 18px rgba(14,107,92,.35)}
+.act svg{width:24px;height:24px}.act.main svg{width:30px;height:30px}
+.act:focus-visible{outline:none}.act:focus-visible .ic{outline:2px solid var(--accent);outline-offset:3px}
+@media (prefers-reduced-motion:no-preference){.act .ic{transition:transform .12s ease}.act:active .ic{transform:scale(.92)}}
+.btn{border:0;border-radius:12px;padding:13px 6px;font:600 15px var(--body);cursor:pointer;background:var(--accent-soft);color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--surface)}
+button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.sheet{position:fixed;inset:0;background:rgba(10,15,13,.45);display:flex;align-items:flex-end;justify-content:center;z-index:20}
+.panel{background:var(--surface);width:100%;max-width:560px;border-radius:18px 18px 0 0;padding:20px max(16px,env(safe-area-inset-right,0px)) calc(20px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px));display:flex;flex-direction:column;gap:12px}
+.panel h3{font-family:var(--display);margin:0;font-size:19px}
+.panel input{font:16px var(--body);padding:12px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.panel .row{display:flex;gap:8px}.panel .row .btn{flex:1}
+.err{color:var(--danger);font-size:13px;min-height:1em}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(110px + env(safe-area-inset-bottom,0px));background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:10px;font-size:14px;z-index:30;max-width:90%}
+@media (prefers-reduced-motion:no-preference){.track i,.summary .bar i{transition:width .4s ease}}
+.page{position:fixed;inset:0;background:var(--bg);z-index:25;overflow-y:auto}
+.page .in{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:calc(14px + env(safe-area-inset-top,0px)) 150px;display:flex;flex-direction:column;gap:16px}
+.page section{display:flex;flex-direction:column;gap:12px}
+.ptop{display:flex;align-items:center;gap:12px}
+.ptop h3{font-family:var(--display);font-size:21px;margin:0}
+.back{width:42px;height:42px;border-radius:50%;border:0;background:var(--surface);color:var(--ink);display:grid;place-items:center;cursor:pointer;box-shadow:0 0 0 1px var(--line)}
+.back svg{width:20px;height:20px}
+.seg{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.opt{border:1.5px solid var(--line);background:var(--surface);border-radius:16px;padding:14px;text-align:left;cursor:pointer;color:var(--ink);font:inherit;display:flex;flex-direction:column;gap:3px}
+.opt b{font-size:15px}.opt span{font-size:12.5px;color:var(--muted);line-height:1.3}
+.opt[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft)}
+.flabel{font-size:13px;color:var(--muted);font-weight:500}
+.bigin{font:600 32px var(--display);padding:12px 14px;border-radius:14px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);width:100%}
+.linkbtn{align-self:flex-start;background:none;border:1.5px solid var(--accent);color:var(--accent);border-radius:999px;padding:9px 16px;font:600 14px var(--body);cursor:pointer}
+.alist{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:4px 14px}
+.arow{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--line)}
+.arow:last-child{border-bottom:0}
+.mini{width:38px;height:38px;flex:none;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font:700 16px var(--display)}
+.mini svg{width:19px;height:19px}
+.arow .nm{flex:1;min-width:0;display:flex;flex-direction:column;font-size:14px;font-weight:500;line-height:1.25}
+.arow .nm small{font-size:12px;color:var(--muted);font-weight:400}
+.arow input{width:112px;flex:none;text-align:right;font:600 16px var(--body);padding:9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);color:var(--ink)}
+.pfoot{position:fixed;left:0;right:0;bottom:0;z-index:26;background:var(--surface);border-top:1px solid var(--line);padding-top:12px;padding-bottom:calc(12px + env(safe-area-inset-bottom,0px));padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.pfoot .in2{max-width:560px;margin:0 auto;display:flex;align-items:center;gap:12px}
+.pfoot .btn{flex:none;min-width:130px;border-radius:999px;padding:14px 22px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+.counter{flex:1;display:flex;flex-direction:column;font-size:12.5px;color:var(--muted)}
+.counter b{font:700 21px var(--display);color:var(--ink)}
+.counter.over b{color:var(--danger)}.counter.done b{color:var(--accent)}
+.hint{font-size:12.5px;color:var(--muted);margin:0;line-height:1.4}
+.b.tap{cursor:pointer;border-radius:12px}.b.tap .ring{position:relative}
+.b.tap:focus-visible{outline:2px solid var(--accent);outline-offset:4px}
+.badge{position:absolute;right:-3px;bottom:-3px;width:22px;height:22px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;border:2px solid var(--surface)}
+.badge svg{width:12px!important;height:12px!important}
+.subbody{display:flex;flex-direction:column;gap:14px}
+.hero{background:var(--accent);color:var(--on-accent);border-radius:20px;padding:18px;display:flex;flex-direction:column;gap:8px}
+.hero.loan{background:var(--loan)}
+.hero .label{font-size:12px;text-transform:uppercase;letter-spacing:.08em;opacity:.85}
+.hero .big{font:700 34px/1.05 var(--display)}
+.hero .row{display:flex;gap:6px 16px;flex-wrap:wrap;font-size:13px;opacity:.92}
+.sechead{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-top:4px}
+.sechead h4{margin:0;font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted)}
+.pill-btn{border:0;background:var(--accent);color:var(--on-accent);border-radius:999px;padding:9px 16px;font:600 14px var(--body);cursor:pointer}
+.loanpage .pill-btn{background:var(--loan)}
+.bhead h2{margin:0}
+.pill-btn.sm{padding:7px 14px;font-size:13px;display:inline-flex;align-items:center;gap:6px}
+.pill-btn.sm svg{width:16px;height:16px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px;display:flex;flex-direction:column;gap:12px}
+.ctop{display:flex;gap:12px;align-items:center}
+.ctop .tag{align-self:flex-start}
+.ring.sm{width:54px;height:54px;flex:none}.ring.sm .ic{width:44px;height:44px}.ring.sm svg{width:21px;height:21px}
+.lic{width:50px;height:50px;flex:none;border-radius:50%;background:var(--loan-soft);color:var(--loan);display:grid;place-items:center}.lic svg{width:23px;height:23px}
+.ctxt{flex:1;min-width:0;display:flex;flex-direction:column;gap:1px}
+.ctxt b{font-size:15px;font-weight:600}.ctxt .amt{font:700 20px var(--display)}.ctxt small{font-size:12.5px;color:var(--muted)}
+.tags{display:flex;gap:6px;flex-wrap:wrap}
+.tag{font-size:11.5px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent);white-space:nowrap}
+.tag.loan{background:var(--loan-soft);color:var(--loan)}
+.tag.due{background:transparent;box-shadow:inset 0 0 0 1px var(--warn);color:var(--warn)}
+.tag.mute{background:var(--track);color:var(--muted)}
+.facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.fact{background:var(--bg);border-radius:12px;padding:8px 10px;display:flex;flex-direction:column;font-size:12px;color:var(--muted);min-width:0}
+.fact b{font-size:14.5px;color:var(--ink);font-weight:600}
+.cacts{display:flex;gap:8px}
+.cacts button{flex:1;min-width:0;border:0;border-radius:999px;padding:10px 8px;font:600 13.5px var(--body);cursor:pointer;background:var(--accent-soft);color:var(--accent)}
+.cacts button.ghost{flex:none;padding:10px 14px;background:transparent;box-shadow:inset 0 0 0 1.5px var(--line);color:var(--muted)}
+.loanpage .cacts button:not(.ghost){background:var(--loan-soft);color:var(--loan)}
+.empty{text-align:center;align-items:center;padding:26px 18px;color:var(--muted);font-size:14px;gap:10px}
+.empty b{color:var(--ink);font-size:16px}
+#fSheet{z-index:40}
+.panel{max-height:90vh;overflow-y:auto}
+.fields{display:flex;flex-direction:column;gap:14px}
+.fld{display:flex;flex-direction:column;gap:6px}
+.flabel i{font-style:normal;opacity:.75}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{border:1.5px solid var(--line);background:var(--bg);color:var(--ink);border-radius:999px;padding:8px 13px;font:500 13.5px var(--body);cursor:pointer}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:var(--accent-soft);color:var(--accent)}
+.tog{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:14px;cursor:pointer}
+.panel .tog input{width:22px;height:22px;padding:0;flex:none;accent-color:var(--accent)}
+.dangerlink{background:none;border:0;color:var(--danger);font:600 14px var(--body);cursor:pointer;padding:6px;align-self:center}
+.pendbar{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;cursor:pointer;background:var(--surface);box-shadow:inset 0 0 0 1.5px var(--warn);border-radius:16px;padding:12px 14px;color:var(--ink);font:inherit}
+.pendbar .dot{width:10px;height:10px;border-radius:50%;background:var(--warn);flex:none}
+.pendbar span{flex:1;min-width:0;font-size:14px}.pendbar b{color:var(--warn);font-size:13.5px;white-space:nowrap}
+.recent{display:flex;flex-direction:column;gap:10px}
+.arow .amtr{font:700 16px var(--display);white-space:nowrap}
+.scanbox{background:var(--surface);border:1px solid var(--line);border-radius:22px;padding:28px 20px;display:flex;flex-direction:column;align-items:center;text-align:center;gap:10px}
+.frame{width:150px;height:150px;border-radius:28px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;margin-bottom:6px}
+.frame svg{width:72px;height:72px}
+.scanbox b{font:700 19px var(--display)}.scanbox span{font-size:14px;color:var(--muted);max-width:30ch}
+.pill-btn.big{padding:14px 26px;font-size:16px;margin-top:6px}
+.altrow{display:flex;gap:10px;flex-wrap:wrap;justify-content:center}
+.payee{display:flex;align-items:center;gap:12px;background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px}
+.avatar{width:48px;height:48px;border-radius:50%;background:var(--accent);color:var(--on-accent);display:grid;place-items:center;font:700 20px var(--display);flex:none}
+.payee .ctxt span{font-size:12.5px;color:var(--muted);overflow-wrap:anywhere}
+.bigin[readonly]{background:var(--bg)}
+.txtin{font:16px var(--body);padding:12px;border-radius:12px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);width:100%}
+.paysum{text-align:center;display:flex;flex-direction:column;gap:4px;padding:8px 0}
+.paysum span{color:var(--muted);font-size:14px}.paysum .big{font:700 40px var(--display);color:var(--ink)}
+.apps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px 8px;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:20px 10px}
+.app{display:flex;flex-direction:column;align-items:center;gap:7px;text-decoration:none;color:var(--ink);font:600 12.5px var(--body);text-align:center}
+.app .ac{width:58px;height:58px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font:700 18px var(--display)}
+.app:focus-visible{outline:none}.app:focus-visible .ac{outline:2px solid var(--accent);outline-offset:3px}
+#cSheet{z-index:45}
+.confirm{text-align:center}
+.cic{width:64px;height:64px;border-radius:50%;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;align-self:center}.cic svg{width:30px;height:30px}
+.confirm .btn{padding:15px}
+.dangerlink.mutedl{color:var(--muted)}
+.steps{gap:10px;box-shadow:inset 0 0 0 1.5px var(--accent);border:0}
+.steps>b{font:700 16px var(--display)}
+.steps ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px;font-size:14px;line-height:1.4}
+.steps ol b{overflow-wrap:anywhere}
+</style>
+<style>
+  :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  body{margin:0;font-size:14px;-webkit-tap-highlight-color:transparent}
+  img{max-width:100%}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Money Buckets</h1>
+    <span class="cycle num" id="cycle"></span>
+  </header>
+  <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
+  <p class="note" id="exNote">Example figures for preview. Tap Add income to start with your own salary.</p>
+
+  <section class="summary" aria-label="This cycle">
+    <span class="label">Left this cycle</span>
+    <span class="big num" id="leftAll"></span>
+    <span class="of num" id="ofAll"></span>
+    <div class="bar"><i id="barAll"></i></div>
+    <div class="row num"><span id="cash"></span><span id="unas"></span><span id="spentAll"></span></div>
+  </section>
+
+  <div class="sechead bhead"><h2>Buckets</h2><button class="pill-btn sm" id="moveBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Move money</button></div>
+  <p class="hint">Tap <b>Savings</b> for your goal pockets and <b>Loan EMI</b> for your loans.</p>
+  <div class="grid" id="grid"></div>
+  <section class="recent" id="recent" hidden>
+    <div class="sechead"><h4>Recent payments</h4></div>
+    <div class="alist" id="recentList"></div>
+  </section>
+</div>
+
+<nav class="actions" aria-label="Actions">
+  <div class="in">
+    <button class="act" id="cashBtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5v5M18 9.5v5"/></svg></span><span>Cash</span></button>
+    <button class="act main" id="payBtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></span><span>Scan &amp; Pay</span></button>
+    <button class="act" id="incomeBtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Add income</span></button>
+  </div>
+</nav>
+
+<div class="sheet" id="sheet" hidden>
+  <form class="panel" id="addForm">
+    <h3>New bucket</h3>
+    <label for="bName" class="cycle">Name, for example Medical or School fees</label>
+    <input id="bName" maxlength="28" autocomplete="off">
+    <span class="err" id="err"></span>
+    <div class="row">
+      <button type="button" class="btn" id="cancel">Cancel</button>
+      <button type="submit" class="btn primary">Add bucket</button>
+    </div>
+  </form>
+</div>
+
+<div class="page" id="incPage" hidden>
+  <div class="in">
+    <div class="ptop">
+      <button class="back" id="incBack" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h3 id="incTitle">Add income</h3>
+    </div>
+    <section id="step1">
+      <div class="seg">
+        <button class="opt" id="optNew" aria-pressed="true"><b>New salary</b><span>Starts a new cycle</span></button>
+        <button class="opt" id="optExtra" aria-pressed="false"><b>Extra income</b><span>Bonus or incentive, added to this cycle</span></button>
+      </div>
+      <label class="flabel" for="incAmt">Amount received</label>
+      <input class="bigin num" id="incAmt" inputmode="numeric" placeholder="₹0" autocomplete="off">
+      <span class="err" id="incErr"></span>
+    </section>
+    <section id="step2" hidden>
+      <p class="cycle" id="incInfo"></p>
+      <button class="linkbtn" id="useLast">Use last cycle's plan</button>
+      <div class="alist" id="alist"></div>
+    </section>
+  </div>
+  <div class="pfoot"><div class="in2"><div class="counter num" id="counter"></div><button class="btn primary" id="incNext">Next</button></div></div>
+</div>
+
+<div class="page" id="subPage" hidden>
+  <div class="in">
+    <div class="ptop">
+      <button class="back" id="subBack" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h3 id="subTitle"></h3>
+    </div>
+    <div class="subbody" id="subBody"></div>
+  </div>
+</div>
+
+<div class="sheet" id="fSheet" hidden>
+  <form class="panel" id="fForm">
+    <h3 id="fTitle"></h3>
+    <p class="cycle" id="fSub"></p>
+    <div class="fields" id="fFields"></div>
+    <span class="err" id="fErr"></span>
+    <div class="row">
+      <button type="button" class="btn" id="fCancel">Cancel</button>
+      <button type="submit" class="btn primary" id="fOk">Save</button>
+    </div>
+    <button type="button" class="dangerlink" id="fDel" hidden>Remove</button>
+  </form>
+</div>
+
+<div class="page" id="payPage" hidden>
+  <div class="in">
+    <div class="ptop">
+      <button class="back" id="payBack" aria-label="Back"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg></button>
+      <h3 id="payTitle">Scan &amp; Pay</h3>
+    </div>
+    <section id="pStep1">
+      <div class="scanbox">
+        <div class="frame"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></div>
+        <b>Scan the shop's QR code</b>
+        <span>Your camera opens. Take a clear photo with the QR code filling most of the screen.</span>
+        <label class="pill-btn big" for="qrCam">Open camera</label>
+        <input type="file" id="qrCam" accept="image/*" capture="environment" hidden>
+      </div>
+      <div class="altrow">
+        <label class="linkbtn" for="qrGal">Pick QR photo from gallery</label>
+        <input type="file" id="qrGal" accept="image/*" hidden>
+        <button type="button" class="linkbtn" id="typeUpi">Type UPI ID</button>
+      </div>
+      <span class="err" id="pErr"></span>
+    </section>
+    <section id="pStep2" hidden>
+      <div class="payee"><span class="avatar" id="pAv"></span><div class="ctxt"><b id="pName"></b><span id="pUpi"></span></div></div>
+      <label class="flabel" for="pAmt">Amount</label>
+      <input class="bigin num" id="pAmt" inputmode="numeric" placeholder="₹0" autocomplete="off">
+      <span class="hint" id="pAmtNote" hidden>The amount is fixed by the shop's QR code.</span>
+      <span class="flabel">Pay from which bucket?</span>
+      <div class="chips" id="pBuckets"></div>
+      <span class="hint" id="pRemember" hidden>Picked the bucket you used last time for this shop.</span>
+      <label class="flabel" for="pNote">Note <i>(optional)</i></label>
+      <input class="txtin" id="pNote" maxlength="40" placeholder="e.g. Vegetables, medicine" autocomplete="off">
+    </section>
+    <section id="pStep3" hidden>
+      <div class="paysum"><span class="big num" id="sAmt"></span><span id="sTo"></span></div>
+      <div class="card steps" id="p2pNote" hidden>
+        <b>Personal UPI ID: pay in 3 steps</b>
+        <ol>
+          <li>Tap your app below. The UPI ID <b id="p2pUpi"></b> is copied for you.</li>
+          <li>In the app, paste the UPI ID or scan the QR, and pay <b id="p2pAmt"></b>.</li>
+          <li>Come back here and tap <b>Yes, payment done</b>.</li>
+        </ol>
+        <span class="hint">For safety, Google Pay and some other apps block personal payments that another app fills in. Shop QR codes open with the amount already filled.</span>
+      </div>
+      <div class="sechead"><h4 id="appHead">Open your UPI app to pay</h4></div>
+      <div class="apps" id="appList"></div>
+      <p class="hint">Pay in the app, then come back here. Before taking money from your bucket, this app will ask whether the payment went through.</p>
+      <div class="altrow">
+        <button type="button" class="linkbtn" id="copyUpi">Copy UPI ID</button>
+        <button type="button" class="linkbtn" id="tryFill" hidden>Try with amount filled in</button>
+        <button type="button" class="linkbtn" id="paidOther">I paid another way</button>
+      </div>
+    </section>
+  </div>
+  <div class="pfoot" id="payFoot" hidden><div class="in2"><div class="counter num" id="payInfo"></div><button class="btn primary" id="payNext">Next</button></div></div>
+</div>
+
+<div class="sheet" id="cSheet" hidden>
+  <div class="panel confirm" role="dialog" aria-labelledby="cTitle">
+    <div class="cic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 8v4M12 16h.01"/></svg></div>
+    <h3 id="cTitle"></h3>
+    <p class="cycle" id="cSub"></p>
+    <button type="button" class="btn primary" id="cYes">Yes, payment done</button>
+    <button type="button" class="btn" id="cNo">No, it failed</button>
+    <button type="button" class="dangerlink mutedl" id="cWait">Still checking, ask me later</button>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/jsqr@1.4.0/dist/jsQR.js"></script>
+<script>
+const KEY='moneyBuckets.v1';
+const defaults=[
+  ['Grocery',8000,5200],['Payments to people',5000,3000],['Loan EMI',9500,9500],
+  ['Eating out / Online food',3000,2850],['Bills & Recharge',2500,1400],['Online shopping',2000,2350],
+  ['Travel',2000,600],['Misc',1500,700],['Savings',6500,0]
+].map(([name,planned,spent])=>({name,planned,spent}));
+let state={start:'2026-11-07',cash:1200,buckets:defaults,unassigned:0,example:true,history:[]};
+try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.buckets))state=s;}catch(e){}
+if(state.example===undefined)state.example=true;
+state.unassigned=state.unassigned||0;state.history=state.history||[];
+state.merchants=state.merchants||{};state.pending=state.pending||null;
+if(!state.txns)state.txns=state.example?[
+  {id:'tx3',date:'2026-11-18',amt:640,bucket:'Grocery',name:'Das Grocery',ex:true},
+  {id:'tx2',date:'2026-11-17',amt:420,bucket:'Eating out / Online food',name:'Zomato',ex:true},
+  {id:'tx1',date:'2026-11-15',amt:349,bucket:'Bills & Recharge',name:'Jio recharge',ex:true}]:[];
+if(!state.goals)state.goals=state.example?[
+  {id:'g1',name:'School fees',target:15000,saved:9000,kept:'With me',ex:true},
+  {id:'g2',name:'Car tyres & service',target:24000,saved:6000,kept:'RD',ex:true},
+  {id:'g3',name:'Medical',target:null,saved:4500,kept:'Bank',ex:true},
+  {id:'g4',name:'Wedding',target:null,saved:30000,kept:'SIP / ETF',ex:true}]:[];
+if(!state.loans)state.loans=state.example?[
+  {id:'l1',name:'Car loan',type:'emi',emi:9500,balance:412000,rate:9.1,updated:'2026-11-05',fromSalary:false,paidCycle:'2026-11-07',paidAmt:9500,ex:true},
+  {id:'l2',name:'Credit card',type:'card',emi:null,balance:6800,rate:42,updated:'2026-11-12',fromSalary:false,ex:true},
+  {id:'l3',name:'Home loan',type:'emi',emi:21000,balance:1850000,rate:8.5,updated:'2026-10-30',fromSalary:true,ex:true}]:[];
+const today=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')};
+const toNum=v=>Number(String(v).replace(/[^\d]/g,''))||0;
+const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(state))}catch(e){}};
+const inr=n=>'₹'+Math.round(n).toLocaleString('en-IN');
+const $=id=>document.getElementById(id);
+const svg=d=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${d}"/></svg>`;
+const ICONS={
+  'Grocery':'M3 9h18l-2 10a2 2 0 0 1-2 1.6H7A2 2 0 0 1 5 19L3 9zM8 9l4-5 4 5M9 13v4M15 13v4',
+  'Payments to people':'M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0',
+  'Loan EMI':'M3 10l9-6 9 6M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 21h18',
+  'Eating out / Online food':'M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M17 21V3c-2 1-3 4-3 7h3',
+  'Bills & Recharge':'M13 2L4 14h7l-1 8 9-12h-7l1-8z',
+  'Online shopping':'M5 8h14l-1 13H6L5 8zM9 8V6a3 3 0 0 1 6 0v2',
+  'Travel':'M6 17V6a3 3 0 0 1 3-3h6a3 3 0 0 1 3 3v11zM6 12h12M8 21v-4M16 21v-4M9 15h.01M15 15h.01',
+  'Misc':'M5 12h.01M12 12h.01M19 12h.01',
+  'Savings':'M12 3l8 4v5c0 5-3.5 8-8 9-4.5-1-8-4-8-9V7l8-4zM9 12l2 2 4-4'
+};
+
+function render(){
+  const planned=state.buckets.reduce((a,b)=>a+b.planned,0);
+  const spent=state.buckets.reduce((a,b)=>a+b.spent,0);
+  const day=Math.max(1,Math.floor((Date.now()-new Date(state.start+'T00:00'))/864e5)+1);
+  const total=planned+state.unassigned;
+  $('exNote').hidden=!state.example;
+  $('cycle').textContent='Day '+day+' of cycle';
+  $('leftAll').textContent=inr(total-spent);
+  $('ofAll').textContent='of '+inr(total)+' this cycle';
+  $('barAll').style.width=(total?Math.max(0,100*(total-spent)/total):0)+'%';
+  $('cash').textContent='Cash in hand '+inr(state.cash);
+  $('unas').textContent=state.unassigned>0?'Unassigned '+inr(state.unassigned):'';
+  const sb=state.buckets.find(x=>x.name==='Savings');
+  $('spentAll').textContent='Spent '+inr(spent-(sb?sb.spent:0));
+  const g=$('grid');g.innerHTML='';
+  state.buckets.forEach(b=>{
+    const left=b.planned-b.spent, used=b.planned?b.spent/b.planned:0;
+    const sv=b.name==='Savings',ln=b.name==='Loan EMI';
+    const el=document.createElement('article');
+    el.className='b'+(sv?'':left<0?' over':used>=.85?' warn':'')+(sv||ln?' tap':'');
+    el.innerHTML=`<div class="ring"><span class="ic"></span></div><span class="left num"></span><span class="name"></span>`;
+    el.querySelector('.ring').style.setProperty('--p',sv?0:Math.min(100,used*100));
+    if(sv||ln){
+      const bd=document.createElement('span');bd.className='badge';bd.innerHTML=svg('M9 6l6 6-6 6');el.querySelector('.ring').appendChild(bd);
+      el.tabIndex=0;el.setAttribute('role','button');el.setAttribute('aria-label','Open '+(sv?'savings goals':'loans'));
+      el.onclick=()=>openSub(sv?'sav':'loan');
+      el.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();openSub(sv?'sav':'loan')}};
+    }
+    const ic=el.querySelector('.ic');
+    if(ICONS[b.name])ic.innerHTML=svg(ICONS[b.name]);else ic.textContent=b.name.charAt(0).toUpperCase();
+    el.querySelector('.left').textContent=left<0?'Over '+inr(-left):inr(left);
+    el.querySelector('.name').textContent=b.name;
+    el.title=b.planned?inr(b.spent)+' spent of '+inr(b.planned):'Not planned yet';
+    g.appendChild(el);
+  });
+  const add=document.createElement('button');add.className='b add';
+  add.innerHTML=`<div class="ring"><span class="ic">${svg('M12 5v14M5 12h14')}</span></div><span class="left">&nbsp;</span><span class="name">Add bucket</span>`;
+  add.onclick=openSheet;g.appendChild(add);
+  renderExtras();
+}
+function toast(t){document.querySelectorAll('.toast').forEach(x=>x.remove());const d=document.createElement('div');d.className='toast';d.textContent=t;document.body.appendChild(d);setTimeout(()=>d.remove(),2200)}
+function openSheet(){$('err').textContent='';$('bName').value='';$('sheet').hidden=false;$('bName').focus()}
+$('cancel').onclick=()=>$('sheet').hidden=true;
+$('sheet').onclick=e=>{if(e.target.id==='sheet')$('sheet').hidden=true};
+$('addForm').onsubmit=e=>{
+  e.preventDefault();const n=$('bName').value.trim();
+  if(!n){$('err').textContent='Type a name for the bucket.';return}
+  if(state.buckets.some(b=>b.name.toLowerCase()===n.toLowerCase())){$('err').textContent='A bucket with this name already exists.';return}
+  state.buckets.splice(state.buckets.length-1,0,{name:n,planned:0,spent:0});
+  save();render();$('sheet').hidden=true;toast('Bucket added');
+};
+['cashBtn'].forEach(id=>$(id).onclick=()=>toast('This comes in the next step'));
+
+/* Add income */
+let inc;
+const isSav=b=>b.name==='Savings';
+function carryAmount(){
+  if(state.example)return 0;
+  return Math.max(0,state.unassigned+state.buckets.filter(b=>!isSav(b)).reduce((a,b)=>a+b.planned-b.spent,0));
+}
+function setType(t){inc.type=t;$('optNew').setAttribute('aria-pressed',t==='new');$('optExtra').setAttribute('aria-pressed',t==='extra')}
+function openIncome(){
+  inc={type:'new',amount:0,alloc:{},step:1};setType('new');
+  $('incAmt').value='';$('incErr').textContent='';
+  $('step1').hidden=false;$('step2').hidden=true;
+  $('incTitle').textContent='Add income';$('incNext').textContent='Next';$('incNext').disabled=false;$('counter').innerHTML='';
+  $('incPage').hidden=false;$('incAmt').focus();
+}
+function closeIncome(){$('incPage').hidden=true}
+function updateCounter(){
+  const used=Object.values(inc.alloc).reduce((a,v)=>a+v,0),left=inc.amount-used,c=$('counter');
+  c.className='counter num'+(left<0?' over':left===0?' done':'');
+  c.innerHTML=left<0?'Over by <b>'+inr(-left)+'</b>':left===0?'All assigned <b>₹0 left</b>':'Left to assign <b>'+inr(left)+'</b>';
+  $('incNext').disabled=left<0;
+}
+function renderAlloc(){
+  const l=$('alist');l.innerHTML='';
+  state.buckets.forEach((b,i)=>{
+    const r=document.createElement('div');r.className='arow';
+    r.innerHTML=`<span class="mini"></span><span class="nm"><span></span><small></small></span><input inputmode="numeric" placeholder="₹0" autocomplete="off">`;
+    const m=r.querySelector('.mini');if(ICONS[b.name])m.innerHTML=svg(ICONS[b.name]);else m.textContent=b.name.charAt(0).toUpperCase();
+    r.querySelector('.nm span').textContent=b.name;
+    let sm=inc.type==='extra'?'Now '+inr(b.planned-b.spent)+' left':(state.example?'':'Last cycle '+inr(b.planned));
+    if(b.name==='Loan EMI'&&emiTotal())sm=(sm?sm+' · ':'')+'Your EMIs '+inr(emiTotal());
+    r.querySelector('small').textContent=sm;
+    const input=r.querySelector('input');input.id='alloc'+i;input.setAttribute('aria-label',b.name+' amount');
+    if(inc.alloc[b.name])input.value=inc.alloc[b.name].toLocaleString('en-IN');
+    input.oninput=()=>{inc.alloc[b.name]=toNum(input.value);updateCounter()};
+    input.onblur=()=>{const v=toNum(input.value);input.value=v?v.toLocaleString('en-IN'):''};
+    l.appendChild(r);
+  });
+  updateCounter();
+}
+$('optNew').onclick=()=>setType('new');
+$('optExtra').onclick=()=>setType('extra');
+$('incAmt').onblur=()=>{const v=toNum($('incAmt').value);$('incAmt').value=v?'₹'+v.toLocaleString('en-IN'):''};
+$('incBack').onclick=()=>{if(inc.step===2){inc.step=1;$('step1').hidden=false;$('step2').hidden=true;$('incNext').textContent='Next';$('incNext').disabled=false;$('counter').innerHTML='';$('incTitle').textContent='Add income'}else closeIncome()};
+$('useLast').onclick=()=>{state.buckets.forEach(b=>{inc.alloc[b.name]=b.planned});renderAlloc();toast('Filled from last cycle. Change any amount.')};
+$('incNext').onclick=()=>{
+  if(inc.step===1){
+    inc.amount=toNum($('incAmt').value);
+    if(!inc.amount){$('incErr').textContent='Type the amount you received.';return}
+    inc.step=2;inc.alloc={};
+    $('step1').hidden=true;$('step2').hidden=false;
+    $('incTitle').textContent=(inc.type==='new'?'Plan ':'Add ')+inr(inc.amount);
+    const carry=carryAmount();
+    $('incInfo').textContent=inc.type==='new'
+      ?'Fill how much goes into each bucket this cycle.'+(carry?' '+inr(carry)+' left over from the current cycle will move to Savings.':'')
+      :'Add this extra money to any buckets. Anything you leave stays unassigned.';
+    $('useLast').hidden=inc.type!=='new';
+    $('incNext').textContent='Save';
+    renderAlloc();return;
+  }
+  const used=Object.values(inc.alloc).reduce((a,v)=>a+v,0),left=inc.amount-used;
+  if(left<0)return;
+  if(inc.type==='new'){
+    const carry=carryAmount();
+    const sav=state.buckets.find(isSav),savLeft=(!state.example&&sav)?Math.max(0,sav.planned-sav.spent):0;
+    if(!state.example)state.history.push({start:state.start,end:today(),buckets:state.buckets.map(b=>({...b})),unassigned:state.unassigned});
+    state.buckets=state.buckets.map(b=>({name:b.name,planned:(inc.alloc[b.name]||0)+(isSav(b)?savLeft+carry:0),spent:0}));
+    if(state.example){state.goals=state.goals.filter(g=>!g.ex);state.loans=state.loans.filter(l=>!l.ex);state.txns=state.txns.filter(t=>!t.ex)}
+    state.start=today();state.unassigned=left;state.example=false;
+    save();render();closeIncome();toast(carry?'New cycle started. '+inr(carry)+' moved to Savings':'New cycle started');
+  }else{
+    state.buckets.forEach(b=>{b.planned+=inc.alloc[b.name]||0});
+    state.unassigned+=left;
+    save();render();closeIncome();toast('Extra income added');
+  }
+};
+$('incomeBtn').onclick=openIncome;
+
+/* Move money between buckets */
+$('moveBtn').onclick=()=>{
+  const opts=state.buckets.map(b=>({v:b.name,t:b.name+' · '+inr(b.planned-b.spent)}));
+  const from=state.unassigned>0?[{v:'__u',t:'Unassigned · '+inr(state.unassigned)},...opts]:opts;
+  openForm({title:'Move money',sub:'This only changes your plan. Nothing is counted as spent.',ok:'Move',
+    fields:[{id:'amt',type:'money',label:'Amount'},
+      {id:'from',type:'chips',label:'From',options:from},
+      {id:'to',type:'chips',label:'To',options:state.buckets.map(b=>({v:b.name,t:b.name}))}],
+    onSubmit:v=>{
+      if(!v.amt)return 'Type an amount.';
+      if(!v.from)return 'Choose the bucket to move from.';
+      if(!v.to)return 'Choose the bucket to move to.';
+      if(v.from===v.to)return 'Choose two different buckets.';
+      const src=v.from==='__u'?null:state.buckets.find(b=>b.name===v.from),dst=state.buckets.find(b=>b.name===v.to);
+      const avail=src?src.planned-src.spent:state.unassigned;
+      if(v.amt>avail)return (src?v.from:'Unassigned')+' has only '+inr(Math.max(0,avail))+' left.';
+      if(src)src.planned-=v.amt;else state.unassigned-=v.amt;
+      dst.planned+=v.amt;
+      done(inr(v.amt)+' moved to '+v.to);
+    }});
+};
+
+/* Shared helpers for pockets */
+const mk=(tag,cls,txt)=>{const e=document.createElement(tag);if(cls)e.className=cls;if(txt!=null)e.textContent=txt;return e};
+const act=(t,fn,cls)=>{const b=mk('button',cls||'',t);b.type='button';b.onclick=fn;return b};
+const fmtDate=s=>new Date(s+'T00:00').toLocaleDateString('en-IN',{day:'numeric',month:'short'});
+const savBucket=()=>state.buckets.find(b=>b.name==='Savings');
+const loanBucket=()=>state.buckets.find(b=>b.name==='Loan EMI');
+const freeSav=()=>{const s=savBucket();return s?s.planned-s.spent:0};
+let sub=null;
+function done(msg){save();render();refreshSub();if(msg)toast(msg)}
+function openSub(k){k==='sav'?renderSavings():renderLoans();$('subPage').hidden=false;$('subPage').scrollTop=0}
+function refreshSub(){if($('subPage').hidden)return;sub==='sav'?renderSavings():renderLoans()}
+$('subBack').onclick=()=>{$('subPage').hidden=true;sub=null};
+
+/* Form sheet */
+let fCfg,fArm=false;
+function openForm(cfg){
+  fCfg=cfg;fArm=false;
+  $('fTitle').textContent=cfg.title;$('fSub').textContent=cfg.sub||'';$('fSub').hidden=!cfg.sub;
+  $('fErr').textContent='';$('fOk').textContent=cfg.ok;
+  $('fDel').hidden=!cfg.onDelete;$('fDel').textContent=cfg.delLabel||'Remove';
+  const box=$('fFields');box.innerHTML='';
+  cfg.fields.forEach(f=>{
+    const w=mk('div','fld'),id='ff_'+f.id;
+    if(f.type==='toggle'){
+      const lab=mk('label','tog');lab.append(mk('span',null,f.label));
+      const i=mk('input');i.type='checkbox';i.id=id;i.checked=!!f.value;lab.append(i);w.append(lab);box.append(w);return;
+    }
+    const lab=mk(f.type==='chips'?'span':'label','flabel',f.label);
+    if(f.type!=='chips')lab.htmlFor=id;
+    if(f.opt)lab.append(mk('i',null,' (optional)'));
+    w.append(lab);
+    if(f.type==='chips'){
+      const ch=mk('div','chips');ch.id=id;ch.dataset.val=f.value||'';ch.setAttribute('role','group');
+      f.options.forEach(o=>{
+        const b=mk('button','chip',o.t);b.type='button';b.setAttribute('aria-pressed',o.v===ch.dataset.val);
+        b.onclick=()=>{const off=f.opt&&ch.dataset.val===o.v;ch.dataset.val=off?'':o.v;
+          ch.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed','false'));if(!off)b.setAttribute('aria-pressed','true')};
+        ch.append(b);
+      });
+      w.append(ch);
+    }else{
+      const i=mk('input');i.id=id;i.autocomplete='off';
+      if(f.type==='money'){
+        i.inputMode='numeric';i.placeholder='₹0';
+        if(f.value!=null&&f.value!=='')i.value=Number(f.value).toLocaleString('en-IN');
+        i.onblur=()=>{i.value=i.value.trim()===''?'':toNum(i.value).toLocaleString('en-IN')};
+      }else if(f.type==='rate'){i.inputMode='decimal';i.placeholder='e.g. 9.5';if(f.value!=null)i.value=f.value}
+      else{i.maxLength=40;i.placeholder=f.ph||'';i.value=f.value||''}
+      w.append(i);
+    }
+    box.append(w);
+  });
+  $('fSheet').hidden=false;
+  const first=box.querySelector('input:not([type=checkbox])');if(first)first.focus();
+}
+function readForm(){
+  const o={};
+  fCfg.fields.forEach(f=>{
+    const e=$('ff_'+f.id);
+    if(f.type==='chips')o[f.id]=e.dataset.val;
+    else if(f.type==='toggle')o[f.id]=e.checked;
+    else if(f.type==='money')o[f.id]=e.value.trim()===''?null:toNum(e.value);
+    else if(f.type==='rate'){const v=parseFloat(e.value.replace(/[^\d.]/g,''));o[f.id]=isNaN(v)?null:v}
+    else o[f.id]=e.value.trim();
+  });
+  return o;
+}
+$('fForm').onsubmit=e=>{e.preventDefault();const err=fCfg.onSubmit(readForm());if(err){$('fErr').textContent=err;return}$('fSheet').hidden=true};
+$('fCancel').onclick=()=>$('fSheet').hidden=true;
+$('fSheet').onclick=e=>{if(e.target.id==='fSheet')$('fSheet').hidden=true};
+$('fDel').onclick=()=>{
+  if(!fArm){fArm=true;$('fDel').textContent='Tap again to confirm';return}
+  const err=fCfg.onDelete();
+  if(err){$('fErr').textContent=err;fArm=false;$('fDel').textContent=fCfg.delLabel||'Remove';return}
+  $('fSheet').hidden=true;
+};
+
+/* Goal pockets inside Savings */
+const KEPT=['With me','Bank','RD','FD','SIP / ETF'].map(v=>({v,t:v}));
+function goalIcon(n){
+  if(/car|bike|tyre|tire|vehicle|scooter/i.test(n))return 'M3 13l2-6h14l2 6v5h-3v-2H6v2H3zM7 13h.01M17 13h.01';
+  if(/school|fee|educat|college|study|tuition/i.test(n))return 'M2 9l10-5 10 5-10 5-10-5zM6 11v5c3 2 9 2 12 0v-5';
+  if(/medic|health|doctor|hospital/i.test(n))return 'M12 21s-7-4.5-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 11c0 5.5-7 10-7 10zM12 9v5M9.5 11.5h5';
+  if(/wedding|marriage|biya/i.test(n))return 'M4 14a5 5 0 1 0 10 0a5 5 0 1 0-10 0M10 14a5 5 0 1 0 10 0a5 5 0 1 0-10 0';
+  if(/house|home|flat|land/i.test(n))return 'M3 11l9-7 9 7M5 10v10h14V10M10 20v-5h4v5';
+  if(/trip|travel|tour|holiday/i.test(n))return 'M2 16l20-8-6 12-3-5-5-2z';
+  return 'M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM12 12h.01';
+}
+function renderSavings(){
+  sub='sav';$('subPage').className='page';$('subTitle').textContent='Savings';
+  const B=$('subBody');B.innerHTML='';
+  const free=freeSav(),inGoals=state.goals.reduce((a,g)=>a+g.saved,0);
+  const hero=mk('section','hero');
+  hero.append(mk('span','label','Total saved'),mk('span','big num',inr(free+inGoals)));
+  const r=mk('div','row num');r.append(mk('span',null,'Free in Savings '+inr(free)),mk('span',null,'In goals '+inr(inGoals)));
+  hero.append(r);B.append(hero);
+  B.append(mk('p','hint','Money moved into a goal is saving, not spending. RD, SIP or FD money can sit in a goal too.'));
+  const sh=mk('div','sechead');sh.append(mk('h4',null,'Goal pockets'),act('+ New goal',newGoal,'pill-btn'));B.append(sh);
+  if(!state.goals.length){
+    const e=mk('div','card empty');
+    e.append(mk('b',null,'No goal pockets yet'),mk('span',null,"Keep money aside for school fees, car service, medical needs or a wedding, so it doesn't get spent on something else."),act('+ Create your first goal',newGoal,'pill-btn'));
+    B.append(e);return;
+  }
+  state.goals.forEach(g=>{
+    const c=mk('article','card'),top=mk('div','ctop');
+    const pct=g.target?Math.min(100,Math.round(g.saved/g.target*100)):0;
+    const ring=mk('div','ring sm');ring.style.setProperty('--p',pct);
+    const ic=mk('span','ic');ic.innerHTML=svg(goalIcon(g.name));ring.append(ic);top.append(ring);
+    const t=mk('div','ctxt');
+    t.append(mk('b',null,g.name),mk('span','amt num',inr(g.saved)),
+      mk('small','num',g.target?(g.saved>=g.target?'Target of '+inr(g.target)+' reached':'of '+inr(g.target)+' · '+pct+'%'):'No target · keeps growing'));
+    top.append(t);if(g.kept)top.append(mk('span','tag',g.kept));c.append(top);
+    const a=mk('div','cacts');a.append(act('Add money',()=>addToGoal(g)),act('Use money',()=>useGoal(g)),act('Edit',()=>editGoal(g),'ghost'));
+    c.append(a);B.append(c);
+  });
+}
+function goalFields(g){return[
+  {id:'name',type:'text',label:'Goal name',value:g?g.name:'',ph:'e.g. School fees, Car service, Wedding'},
+  {id:'target',type:'money',label:'Target amount',opt:true,value:g?g.target:null},
+  {id:'kept',type:'chips',label:'Where is this money kept?',opt:true,options:KEPT,value:g?g.kept:''}]}
+function newGoal(){openForm({title:'New goal',ok:'Create goal',
+  fields:[...goalFields(),{id:'start',type:'money',label:'Already saved before using this app',opt:true}],
+  onSubmit:v=>{if(!v.name)return 'Give the goal a name.';
+    state.goals.push({id:'g'+Date.now(),name:v.name,target:v.target||null,kept:v.kept||'',saved:v.start||0});done('Goal created')}})}
+function editGoal(g){openForm({title:'Edit goal',ok:'Save',fields:goalFields(g),
+  onSubmit:v=>{if(!v.name)return 'Give the goal a name.';g.name=v.name;g.target=v.target||null;g.kept=v.kept||'';done('Goal updated')},
+  delLabel:'Remove this goal',
+  onDelete:()=>{if(g.saved>0)return 'Use or move the money in this goal first.';state.goals=state.goals.filter(x=>x!==g);done('Goal removed')}})}
+function addToGoal(g){const free=freeSav();openForm({title:'Add to '+g.name,sub:'Free in Savings: '+inr(free),ok:'Add money',
+  fields:[{id:'amt',type:'money',label:'Amount'}],
+  onSubmit:v=>{if(!v.amt)return 'Type an amount.';
+    if(v.amt>free)return 'Only '+inr(free)+' is free in Savings. Put more into Savings when you add income.';
+    savBucket().spent+=v.amt;g.saved+=v.amt;done(inr(v.amt)+' added to '+g.name)}})}
+function useGoal(g){openForm({title:'Use money from '+g.name,sub:'In this goal: '+inr(g.saved),ok:'Done',
+  fields:[{id:'amt',type:'money',label:'Amount'},
+    {id:'how',type:'chips',label:'What happened?',options:[{v:'spent',t:'Spent it for this goal'},{v:'back',t:'Move back to Savings'}],value:'spent'}],
+  onSubmit:v=>{if(!v.amt)return 'Type an amount.';if(v.amt>g.saved)return 'This goal has only '+inr(g.saved)+'.';
+    g.saved-=v.amt;if(v.how==='back')savBucket().spent-=v.amt;
+    done(v.how==='back'?inr(v.amt)+' moved back to Savings':inr(v.amt)+' used from '+g.name)}})}
+
+/* Loan pockets inside Loan EMI */
+const LT={emi:'EMI loan',card:'Credit card',od:'Overdraft',cc:'Cash credit'};
+const LICON={emi:ICONS['Loan EMI'],card:'M3 6h18v12H3zM3 10h18M7 15h3',od:'M4 4v16h16M8 15l3-4 3 2 5-6',cc:'M4 4v16h16M8 15l3-4 3 2 5-6'};
+const monthInt=l=>l.balance&&l.rate?l.balance*l.rate/1200:0;
+const emiTotal=()=>state.loans.filter(l=>!l.fromSalary).reduce((a,l)=>a+(l.emi||0),0);
+function monthsLeft(l){
+  if(l.type!=='emi'||!l.balance||!l.emi)return null;
+  const r=(l.rate||0)/1200;if(r===0)return Math.ceil(l.balance/l.emi);
+  if(l.emi<=l.balance*r)return Infinity;
+  return Math.ceil(-Math.log(1-r*l.balance/l.emi)/Math.log(1+r));
+}
+const fmtMonths=n=>n===null?'—':n===Infinity?'EMI too low':n>=12?Math.floor(n/12)+' yr'+(n%12?' '+n%12+' mo':''):n+' mo';
+function renderLoans(){
+  sub='loan';$('subPage').className='page loanpage';$('subTitle').textContent='Loans';
+  const B=$('subBody');B.innerHTML='';
+  const bal=state.loans.reduce((a,l)=>a+(l.balance||0),0),it=state.loans.reduce((a,l)=>a+monthInt(l),0),lb=loanBucket();
+  const hero=mk('section','hero loan');
+  hero.append(mk('span','label','Total outstanding'),mk('span','big num',inr(bal)));
+  const r=mk('div','row num');r.append(mk('span',null,'EMIs in this app '+inr(emiTotal())),mk('span',null,'Interest about '+inr(it)+' / month'));
+  hero.append(r);B.append(hero);
+  if(lb)B.append(mk('p','hint num','Loan EMI bucket: '+inr(lb.planned-lb.spent)+' left of '+inr(lb.planned)+'. Loans cut directly from salary are not counted.'));
+  const sh=mk('div','sechead');sh.append(mk('h4',null,'Your loans'),act('+ Add loan',newLoan,'pill-btn'));B.append(sh);
+  if(!state.loans.length){
+    const e=mk('div','card empty');
+    e.append(mk('b',null,'No loans added'),mk('span',null,'Add each loan, credit card or overdraft to see its balance, interest and how long is left.'),act('+ Add your first loan',newLoan,'pill-btn'));
+    B.append(e);return;
+  }
+  state.loans.forEach(l=>{
+    const c=mk('article','card'),top=mk('div','ctop');
+    const ic=mk('span','lic');ic.innerHTML=svg(LICON[l.type]||LICON.emi);top.append(ic);
+    const t=mk('div','ctxt');
+    t.append(mk('b',null,l.name),mk('span','amt num',l.balance!=null?inr(l.balance):'Balance not set'),
+      mk('small',null,l.balance!=null&&l.updated?'Bank balance updated '+fmtDate(l.updated):'Tap Update balance to add it'));
+    top.append(t);c.append(top);
+    const tags=mk('div','tags');tags.append(mk('span','tag loan',LT[l.type]||'Loan'));
+    const paid=l.paidCycle===state.start;
+    if(l.fromSalary)tags.append(mk('span','tag mute','Cut from salary'));
+    else if(paid)tags.append(mk('span','tag num','Paid '+inr(l.paidAmt||0)+' this cycle'));
+    else if(l.emi)tags.append(mk('span','tag due','Not paid this cycle'));
+    c.append(tags);
+    const facts=mk('div','facts');
+    [['EMI',l.emi?inr(l.emi):'Not set'],['Interest rate',l.rate!=null?l.rate+'% a year':'Not set'],
+     ['Interest per month',monthInt(l)?'about '+inr(monthInt(l)):'—'],['Time left',fmtMonths(monthsLeft(l))]]
+      .forEach(([k,v])=>{const f=mk('div','fact num');f.append(mk('span',null,k),mk('b',null,v));facts.append(f)});
+    c.append(facts);
+    const a=mk('div','cacts');
+    if(!l.fromSalary)a.append(act('Record payment',()=>payLoan(l)));
+    a.append(act('Update balance',()=>updBal(l)),act('Edit',()=>editLoan(l),'ghost'));
+    c.append(a);B.append(c);
+  });
+  B.append(mk('p','hint','Interest and time left are estimates. Update the balance from your bank statement now and then, and the app will use the bank figure.'));
+}
+function loanFields(l){return[
+  {id:'name',type:'text',label:'Name',value:l?l.name:'',ph:'e.g. Car loan, SBI credit card'},
+  {id:'type',type:'chips',label:'Type',options:Object.entries(LT).map(([v,t])=>({v,t})),value:l?l.type:'emi'},
+  {id:'emi',type:'money',label:'Monthly EMI',opt:true,value:l?l.emi:null},
+  {id:'balance',type:'money',label:'Outstanding balance',opt:true,value:l?l.balance:null},
+  {id:'rate',type:'rate',label:'Interest rate (% a year)',opt:true,value:l?l.rate:null},
+  {id:'fromSalary',type:'toggle',label:'Cut directly from my salary, so not counted in buckets',value:l?l.fromSalary:false}]}
+function saveLoan(l,v){
+  if(!v.name)return 'Give the loan a name.';
+  const isNew=!l;l=l||{id:'l'+Date.now()};
+  if(v.balance!=null&&v.balance!==l.balance)l.updated=today();
+  Object.assign(l,{name:v.name,type:v.type||'emi',emi:v.emi||null,balance:v.balance,rate:v.rate,fromSalary:v.fromSalary});
+  if(isNew)state.loans.push(l);
+  done(isNew?'Loan added':'Loan updated');
+}
+function newLoan(){openForm({title:'Add loan',ok:'Add loan',fields:loanFields(),onSubmit:v=>saveLoan(null,v)})}
+function editLoan(l){openForm({title:'Edit loan',ok:'Save',fields:loanFields(l),onSubmit:v=>saveLoan(l,v),
+  delLabel:'Remove this loan',onDelete:()=>{state.loans=state.loans.filter(x=>x!==l);done('Loan removed')}})}
+function payLoan(l){const lb=loanBucket(),left=lb?lb.planned-lb.spent:0;
+  openForm({title:'Record payment',sub:l.name+' · Loan EMI bucket has '+inr(left)+' left',ok:'Record',
+    fields:[{id:'amt',type:'money',label:'Amount paid',value:l.emi||null}],
+    onSubmit:v=>{if(!v.amt)return 'Type the amount you paid.';
+      if(lb)lb.spent+=v.amt;
+      if(l.balance!=null){const pr=l.type==='emi'?Math.max(0,v.amt-monthInt(l)):v.amt;l.balance=Math.max(0,Math.round(l.balance-pr))}
+      l.paidAmt=(l.paidCycle===state.start?(l.paidAmt||0):0)+v.amt;l.paidCycle=state.start;
+      done('Payment recorded')}})}
+function updBal(l){openForm({title:'Update balance',ok:'Update',
+  sub:'Type the outstanding amount your bank shows for '+l.name+'. The app will use this figure from now on.',
+  fields:[{id:'bal',type:'money',label:'Outstanding balance',value:l.balance}],
+  onSubmit:v=>{if(v.bal==null)return 'Type the balance from your bank.';l.balance=v.bal;l.updated=today();done('Balance updated')}})}
+
+/* Scan & Pay */
+let pay={step:1},askTimer=null;
+const APPS=[
+  {n:'Google Pay',k:'G',pkg:'com.google.android.apps.nbu.paisa.user',ios:'tez://upi/pay?',home:'tez://'},
+  {n:'PhonePe',k:'Pe',pkg:'com.phonepe.app',ios:'phonepe://pay?',home:'phonepe://'},
+  {n:'Paytm',k:'Pt',pkg:'net.one97.paytm',ios:'paytmmp://pay?',home:'paytmmp://'},
+  {n:'BHIM',k:'B',pkg:'in.org.npci.upiapp',ios:'bhim://upi/pay?',home:'bhim://'},
+  {n:'Any UPI app',k:'…',pkg:null,ios:'upi://pay?',home:null}];
+const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+function openPay(){pay={step:1};$('pErr').textContent='';showPayStep(1);$('payPage').hidden=false;$('payPage').scrollTop=0}
+function showPayStep(n){
+  pay.step=n;['pStep1','pStep2','pStep3'].forEach((id,i)=>$(id).hidden=i+1!==n);
+  $('payFoot').hidden=n!==2;
+  $('payTitle').textContent=n===1?'Scan & Pay':n===2?'Payment details':'Pay';
+  if(n===2)renderPayDetails();if(n===3)renderPayApps();
+}
+$('payBack').onclick=()=>{if(pay.step>1)showPayStep(pay.step-1);else $('payPage').hidden=true};
+function parseUpi(t){
+  t=String(t||'').trim();if(!/^upi:\/\/pay/i.test(t))return null;
+  const q=t.split('?')[1]||'',sp=new URLSearchParams(q),pa=sp.get('pa');
+  if(!pa||!pa.includes('@'))return null;
+  const am=sp.get('am'),mc=sp.get('mc');
+  return{raw:q,pa,pn:sp.get('pn')||'',am:am&&Number(am)>0?Number(am):null,merchant:!!((mc&&mc!=='0000')||sp.get('sign'))};
+}
+async function decodeFile(file){
+  const url=URL.createObjectURL(file);
+  try{
+    const img=await new Promise((res,rej)=>{const i=new Image();i.onload=()=>res(i);i.onerror=rej;i.src=url});
+    if('BarcodeDetector' in window){try{const d=new BarcodeDetector({formats:['qr_code']});const r=await d.detect(img);if(r.length)return r[0].rawValue}catch(e){}}
+    if(typeof jsQR!=='function')return null;
+    for(const max of [1000,1600,600]){
+      const s=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement('canvas');
+      c.width=Math.round(img.width*s);c.height=Math.round(img.height*s);
+      const x=c.getContext('2d');x.drawImage(img,0,0,c.width,c.height);
+      const d=x.getImageData(0,0,c.width,c.height),r=jsQR(d.data,c.width,c.height,{inversionAttempts:'attemptBoth'});
+      if(r)return r.data;
+    }
+    return null;
+  }finally{URL.revokeObjectURL(url)}
+}
+async function onQrFile(e){
+  const f=e.target.files[0];e.target.value='';if(!f)return;
+  $('pErr').textContent='Reading the QR code…';
+  let txt=null;try{txt=await decodeFile(f)}catch(err){}
+  if(!txt){$('pErr').textContent="Couldn't find a QR code in that photo. Hold the phone steady, fill the screen with the QR code and try again.";return}
+  const p=parseUpi(txt);
+  if(!p){$('pErr').textContent='This QR code is not a UPI payment code.';return}
+  $('pErr').textContent='';startDetails(p);
+}
+$('qrCam').onchange=onQrFile;$('qrGal').onchange=onQrFile;
+$('typeUpi').onclick=()=>openForm({title:'Pay to a UPI ID',ok:'Next',
+  fields:[{id:'pa',type:'text',label:'UPI ID',ph:'e.g. shopname@okaxis'},{id:'pn',type:'text',label:'Name',opt:true,ph:'e.g. Ramesh Store'}],
+  onSubmit:v=>{if(!/^[\w.\-]{2,}@[a-zA-Z]{2,}$/.test(v.pa))return 'Type a valid UPI ID, like name@bank.';
+    const sp=new URLSearchParams();sp.set('pa',v.pa);if(v.pn)sp.set('pn',v.pn);
+    startDetails({raw:sp.toString(),pa:v.pa,pn:v.pn,am:null,merchant:false})}});
+function startDetails(p){pay.forceFill=false;pay.payee=p;pay.amt=p.am||0;pay.bucket=state.merchants[p.pa]||'';pay.note='';showPayStep(2)}
+function renderPayDetails(){
+  const p=pay.payee,nm=p.pn||'UPI payment';
+  $('pAv').textContent=nm.charAt(0).toUpperCase();$('pName').textContent=nm;$('pUpi').textContent=p.pa;
+  const a=$('pAmt');a.value=pay.amt?'₹'+pay.amt.toLocaleString('en-IN'):'';a.readOnly=!!p.am;$('pAmtNote').hidden=!p.am;
+  const ch=$('pBuckets');ch.innerHTML='';
+  state.buckets.filter(b=>b.name!=='Savings').forEach(b=>{
+    const c=mk('button','chip',b.name+' · '+inr(b.planned-b.spent));c.type='button';c.setAttribute('aria-pressed',b.name===pay.bucket);
+    c.onclick=()=>{pay.bucket=b.name;ch.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed','false'));c.setAttribute('aria-pressed','true');payFoot()};
+    ch.append(c);
+  });
+  $('pRemember').hidden=!state.merchants[p.pa];
+  $('pNote').value=pay.note||'';payFoot();if(!p.am)a.focus();
+}
+$('pAmt').oninput=()=>{pay.amt=toNum($('pAmt').value);payFoot()};
+$('pAmt').onblur=()=>{if(!$('pAmt').readOnly){const v=toNum($('pAmt').value);$('pAmt').value=v?'₹'+v.toLocaleString('en-IN'):''}};
+function payFoot(){
+  const b=state.buckets.find(x=>x.name===pay.bucket),c=$('payInfo');
+  if(!b){c.className='counter';c.replaceChildren(document.createTextNode('Choose a bucket'),mk('b',null,'to pay from'))}
+  else{const left=b.planned-b.spent-pay.amt;c.className='counter num'+(left<0?' over':'');
+    c.replaceChildren(document.createTextNode(left<0?b.name+' will be over by':b.name+' left after this'),mk('b',null,inr(Math.abs(left))))}
+  $('payNext').disabled=!(b&&pay.amt>0);
+}
+$('payNext').onclick=()=>{pay.note=$('pNote').value.trim();showPayStep(3)};
+function payQuery(){
+  const sp=new URLSearchParams(pay.payee.raw);
+  if(!sp.get('am'))sp.set('am',pay.amt.toFixed(2));
+  if(!sp.get('cu'))sp.set('cu','INR');
+  if(pay.note&&!sp.get('tn'))sp.set('tn',pay.note);
+  return sp.toString().replace(/\+/g,'%20').replace(/%40/g,'@');
+}
+function copyText(t){try{return navigator.clipboard.writeText(t)}catch(e){return Promise.reject(e)}}
+function homeLink(a){
+  const sp=new URLSearchParams(pay.payee.raw);sp.delete('am');
+  const q=sp.toString().replace(/\+/g,'%20').replace(/%40/g,'@');
+  if(isIOS)return a.home||'upi://pay?'+q;
+  return a.pkg?'intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package='+a.pkg+';end':'upi://pay?'+q;
+}
+function renderPayApps(){
+  const p=pay.payee,direct=p.merchant||pay.forceFill;
+  $('sAmt').textContent=inr(pay.amt);$('sTo').textContent='to '+(p.pn||p.pa)+' · from '+pay.bucket;
+  $('p2pNote').hidden=direct;$('tryFill').hidden=direct;
+  $('p2pUpi').textContent=p.pa;$('p2pAmt').textContent=inr(pay.amt);
+  $('appHead').textContent=direct?'Open your UPI app to pay':'Tap your UPI app';
+  const box=$('appList');box.innerHTML='';const q=payQuery();
+  APPS.forEach(a=>{
+    const l=mk('a','app');
+    l.href=direct?(isIOS?a.ios+q:(a.pkg?'intent://pay?'+q+'#Intent;scheme=upi;package='+a.pkg+';end':'upi://pay?'+q)):homeLink(a);
+    l.append(mk('span','ac',a.k),mk('span',null,a.n));
+    l.onclick=()=>{if(!direct)copyText(p.pa).catch(()=>{});startPending(a.n)};
+    box.append(l);
+  });
+}
+$('tryFill').onclick=()=>{pay.forceFill=true;renderPayApps()};
+function newPending(app){return{id:'t'+Date.now(),amt:pay.amt,bucket:pay.bucket,name:pay.payee.pn||pay.payee.pa,pa:pay.payee.pa,note:pay.note,app}}
+function startPending(app){
+  state.pending=newPending(app);state.merchants[pay.payee.pa]=pay.bucket;save();
+  clearTimeout(askTimer);askTimer=setTimeout(()=>{$('payPage').hidden=true;render();askConfirm()},4000);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.visibilityState==='visible'&&state.pending){clearTimeout(askTimer);askTimer=setTimeout(()=>{$('payPage').hidden=true;render();askConfirm()},700)}
+});
+function askConfirm(){
+  const p=state.pending;if(!p)return;
+  $('cTitle').textContent='Did '+inr(p.amt)+' reach '+p.name+'?';
+  $('cSub').textContent='Check your payment app. If it says successful, tap Yes and '+inr(p.amt)+' will come off '+p.bucket+'.';
+  $('cSheet').hidden=false;
+}
+function recordTxn(p){
+  const b=state.buckets.find(x=>x.name===p.bucket);if(b)b.spent+=p.amt;
+  state.txns.unshift({id:p.id,date:today(),amt:p.amt,bucket:p.bucket,name:p.name,pa:p.pa,note:p.note,app:p.app});
+  state.txns=state.txns.slice(0,300);
+}
+$('cYes').onclick=()=>{const p=state.pending;state.pending=null;$('cSheet').hidden=true;if(p){recordTxn(p);done(inr(p.amt)+' taken from '+p.bucket)}};
+$('cNo').onclick=()=>{state.pending=null;$('cSheet').hidden=true;done('Nothing deducted')};
+$('cWait').onclick=()=>{$('cSheet').hidden=true;render()};
+$('pendBar').onclick=askConfirm;
+$('paidOther').onclick=()=>{const p=newPending('Other');state.merchants[pay.payee.pa]=pay.bucket;recordTxn(p);$('payPage').hidden=true;done(inr(p.amt)+' taken from '+p.bucket)};
+$('copyUpi').onclick=()=>{const t=pay.payee.pa;try{navigator.clipboard.writeText(t).then(()=>toast('UPI ID copied'),()=>toast('UPI ID: '+t))}catch(e){toast('UPI ID: '+t)}};
+function renderExtras(){
+  const pb=$('pendBar'),p=state.pending;pb.hidden=!p;
+  if(p)pb.querySelector('span').textContent='Waiting: '+inr(p.amt)+' to '+p.name+' from '+p.bucket;
+  const rl=$('recentList'),tx=state.txns||[];$('recent').hidden=!tx.length;rl.innerHTML='';
+  tx.slice(0,6).forEach(t=>{
+    const r=mk('div','arow'),m=mk('span','mini');
+    if(ICONS[t.bucket])m.innerHTML=svg(ICONS[t.bucket]);else m.textContent=t.bucket.charAt(0).toUpperCase();
+    const nm=mk('span','nm');nm.append(mk('span',null,t.name),mk('small',null,t.bucket+' · '+fmtDate(t.date)+(t.note?' · '+t.note:'')));
+    r.append(m,nm,mk('span','amtr num','−'+inr(t.amt)));rl.append(r);
+  });
+}
+$('payBtn').onclick=openPay;
+if(state.pending)setTimeout(askConfirm,600);
+render();
+</script>
+</body>
+</html>
