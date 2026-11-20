@@ -8,22 +8,23 @@
 <meta name="apple-mobile-web-app-title" content="Money Buckets">
 <meta name="theme-color" content="#0E6B5C">
 <title>Money Buckets</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Inter:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
 /* Layout: one phone-width column — cycle summary, bucket grid, fixed action bar at the bottom */
 :root{
-  --bg:#F3F6F4; --surface:#FFFFFF; --ink:#15211C; --muted:#5E6D66; --line:#DCE4E0;
-  --accent:#0E6B5C; --accent-soft:#DDEFEA; --warn:#B7791F; --danger:#C2412D; --track:#E7EDEA;
+  --bg:#F4F7F8; --surface:#FFFFFF; --ink:#0F1F1D; --muted:#64748B; --line:#E4EBEC;
+  --accent:#00796B; --accent-soft:#E0F2EF; --warn:#D97706; --danger:#DC2626; --track:#E6EEEE;
+  --danger-soft:#FDEEEE; --shadow:0 1px 2px rgba(15,31,29,.04),0 6px 18px -8px rgba(15,31,29,.12); --hero:linear-gradient(135deg,#E6F5F2 0%,#FFFFFF 70%);
   --on-accent:#FFFFFF; --loan:#3D4FA0; --loan-soft:#E4E8F7;
-  --display:'Bricolage Grotesque', 'Segoe UI', system-ui, sans-serif;
-  --body:'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --display:'Plus Jakarta Sans', 'Segoe UI', system-ui, sans-serif;
+  --body:'Plus Jakarta Sans', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
-  --bg:#0F1613; --surface:#18221E; --ink:#E6EEEA; --muted:#93A39C; --line:#2A3832;
-  --accent:#4FC2A8; --accent-soft:#1D3A33; --warn:#E0A54A; --danger:#EF7A66; --track:#25322D; --on-accent:#0F1613; --loan:#93A5F2; --loan-soft:#232A47; color-scheme:dark}}
+  --bg:#0D1514; --surface:#16211F; --ink:#E6EEEC; --muted:#94A3B8; --line:#24322F;
+  --accent:#3CC6AE; --accent-soft:#163631; --warn:#F2A93B; --danger:#F87171; --track:#22302D; --danger-soft:#3A1E1E; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 20px -10px rgba(0,0,0,.6); --hero:linear-gradient(135deg,#173A34 0%,#16211F 70%); --on-accent:#0F1613; --loan:#93A5F2; --loan-soft:#232A47; color-scheme:dark}}
 :root[data-theme="dark"]{
-  --bg:#0F1613; --surface:#18221E; --ink:#E6EEEA; --muted:#93A39C; --line:#2A3832;
-  --accent:#4FC2A8; --accent-soft:#1D3A33; --warn:#E0A54A; --danger:#EF7A66; --track:#25322D; --on-accent:#0F1613; --loan:#93A5F2; --loan-soft:#232A47; color-scheme:dark}
+  --bg:#0D1514; --surface:#16211F; --ink:#E6EEEC; --muted:#94A3B8; --line:#24322F;
+  --accent:#3CC6AE; --accent-soft:#163631; --warn:#F2A93B; --danger:#F87171; --track:#22302D; --danger-soft:#3A1E1E; --shadow:0 1px 2px rgba(0,0,0,.3),0 8px 20px -10px rgba(0,0,0,.6); --hero:linear-gradient(135deg,#173A34 0%,#16211F 70%); --on-accent:#0F1613; --loan:#93A5F2; --loan-soft:#232A47; color-scheme:dark}
 *{box-sizing:border-box}
 [hidden]{display:none!important}
 body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
@@ -218,6 +219,110 @@ header{align-items:center}
 .steps>b{font:700 16px var(--display)}
 .steps ol{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:7px;font-size:14px;line-height:1.4}
 .steps ol b{overflow-wrap:anywhere}
+
+/* ===== Stitch-style restyle ===== */
+body{background:var(--bg);font-size:15px;letter-spacing:-.005em}
+.wrap{gap:16px;padding-block:14px 130px}
+header{align-items:center}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;border-radius:12px;background:var(--accent);color:#fff;display:grid;place-items:center;box-shadow:0 6px 14px -6px rgba(0,121,107,.6)}
+.logo svg{width:22px;height:22px}
+.brand h1{font:800 18px/1.1 var(--display);letter-spacing:-.02em}
+.pill{display:inline-block;margin-top:3px;font-size:11px;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:999px}
+.hbtn{background:var(--surface);box-shadow:var(--shadow)}
+.greet{display:flex;flex-direction:column;gap:2px;margin-top:2px}
+.hello{font:800 24px/1.15 var(--display);letter-spacing:-.02em;margin:0;text-transform:none;color:var(--ink)}
+.note{background:var(--accent-soft);color:var(--accent);border-radius:12px;font-weight:500}
+.summary{background:var(--hero);color:var(--ink);border:1px solid var(--line);border-radius:22px;padding:18px;gap:12px;box-shadow:var(--shadow)}
+:root[data-theme="dark"] .summary{color:var(--ink)}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]) .summary{color:var(--ink)}}
+.summary .label{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:700;color:var(--muted);opacity:1;letter-spacing:.07em}
+.summary .label i{width:7px;height:7px;border-radius:50%;background:var(--accent)}
+.bigline{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.summary .big{font:800 36px/1 var(--display);letter-spacing:-.03em;color:var(--ink)}
+.summary .of{font-size:14px;color:var(--muted);opacity:1}
+.summary .bar{height:8px;background:var(--track)}
+.summary .bar i{background:var(--accent);opacity:1;border-radius:6px}
+.summary .row{font-size:12.5px;color:var(--muted);opacity:1;font-weight:500}
+.summary .row span:first-child{color:var(--accent)}
+.unas{font-size:12.5px;color:var(--warn);font-weight:600}.unas:empty{display:none}
+.cashrow{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px 10px 10px 12px}
+.cic2{width:36px;height:36px;border-radius:10px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;flex:none}.cic2 svg{width:19px;height:19px}
+.cashtxt{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.2}
+.cashtxt small{font-size:10.5px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.cashtxt b{font:800 17px var(--display)}
+.sumbtn{display:inline-flex;align-items:center;gap:6px;background:var(--accent);color:var(--on-accent);padding:9px 14px;margin:0;box-shadow:0 6px 14px -8px rgba(0,121,107,.7)}
+.sumbtn svg{width:15px;height:15px}
+.sh{font:800 17px var(--display);letter-spacing:-.01em;color:var(--ink);text-transform:none;margin:0;display:flex;align-items:center;gap:8px}
+.cnt{font:600 11px var(--body);color:var(--accent);background:var(--accent-soft);padding:2px 8px;border-radius:999px;letter-spacing:0}
+.bhead .pill-btn.sm{background:transparent;color:var(--accent);padding:6px 4px;box-shadow:none}
+.grid{background:none;border:0;padding:0;gap:10px}
+.b{background:var(--surface);border:1px solid var(--line);border-radius:18px;padding:14px 6px 12px;gap:3px;box-shadow:var(--shadow);position:relative}
+.ring{width:50px;height:50px;margin-bottom:6px}
+.ring .ic{width:42px;height:42px;background:var(--surface)}
+.ring svg{width:21px;height:21px}
+.b .name{order:0;font:700 13px/1.2 var(--body);color:var(--ink)}
+.b .left{font:700 12.5px var(--body);color:var(--accent);margin:0}
+.b .pct{font-size:11px;color:var(--muted)}
+.b.warn .left{color:var(--warn)}
+.b.over{background:var(--danger-soft);border-color:transparent}
+.b.over .ring .ic{background:var(--danger-soft)}
+.b.over .pct{display:inline-block;margin-top:2px;background:var(--danger);color:#fff;font-weight:700;padding:1px 7px;border-radius:999px;font-size:10.5px}
+.b.over::after{content:"";position:absolute;top:9px;right:9px;width:7px;height:7px;border-radius:50%;background:var(--danger)}
+.badge{display:none}
+.add{background:transparent;box-shadow:none;border:1.5px dashed var(--line)}
+.add .ring{border:0}
+.add .name{color:var(--muted)}
+.b.tap:focus-visible{outline-offset:2px}
+@media (prefers-reduced-motion:no-preference){.b.tap{transition:transform .12s ease}.b.tap:active{transform:scale(.97)}}
+.alist{border-radius:20px;box-shadow:var(--shadow);padding:2px 14px}
+.arow{padding:12px 0}
+.arow .nm{font-weight:600}
+.arow .nm small em{font-style:normal;font-weight:600;color:var(--accent);background:var(--accent-soft);padding:1px 6px;border-radius:6px;margin-left:2px}
+.amtc{display:flex;flex-direction:column;align-items:flex-end;line-height:1.2}
+.amtc small{font-size:11px;color:var(--muted)}
+.mini{border-radius:12px}
+.arow .amtr{font:800 15.5px var(--display)}
+.actions{background:var(--surface);border-top:1px solid var(--line);box-shadow:0 -8px 24px -12px rgba(15,31,29,.15);padding-top:8px;padding-bottom:calc(8px + env(safe-area-inset-bottom,0px))}
+.actions .in{justify-content:space-between;align-items:flex-end}
+.act{min-width:0;flex:1;gap:3px;font:600 11px var(--body);color:var(--muted)}
+.act .ic{width:auto;height:30px;background:none;color:var(--muted)}
+.act svg{width:23px;height:23px}
+.act.on,.act.on .ic{color:var(--accent)}
+.act.main{color:var(--accent)}
+.act.main .ic{width:60px;height:60px;margin-top:-30px;background:var(--accent);color:#fff;border:4px solid var(--surface);box-shadow:0 10px 22px -8px rgba(0,121,107,.7)}
+.act.main svg{width:27px;height:27px}
+.pendbar{box-shadow:inset 0 0 0 1.5px var(--warn),var(--shadow)}
+.card,.payee,.scanbox,.apps{box-shadow:var(--shadow);border-radius:20px}
+.hero{background:var(--hero);color:var(--ink);border:1px solid var(--line);box-shadow:var(--shadow)}
+.hero .label{color:var(--muted);opacity:1;font-weight:700;font-size:11.5px}
+.hero .big{font-weight:800;letter-spacing:-.03em;color:var(--ink)}
+.hero .row{color:var(--muted);opacity:1;font-weight:500}
+.hero.loan{background:linear-gradient(135deg,var(--loan-soft) 0%,var(--surface) 75%)}
+.hero.loan .big{color:var(--loan)}
+.hero.over{background:var(--danger-soft)}.hero.over .big{color:var(--danger)}
+.hero .pill-btn.onhero{background:var(--loan);color:#fff}
+.pill-btn{box-shadow:0 6px 14px -8px rgba(0,121,107,.7)}
+.loanpage .pill-btn{box-shadow:none}
+.sechead h4{font:800 15px var(--display);text-transform:none;letter-spacing:-.01em;color:var(--ink)}
+.ptop h3{font-weight:800;letter-spacing:-.02em}
+.back{box-shadow:var(--shadow)}
+.page{background:var(--bg)}
+.bigin{text-align:center;font:800 40px var(--display);letter-spacing:-.02em;border-radius:20px;padding:20px 14px;box-shadow:var(--shadow);border-color:var(--line)}
+.chips.pb{flex-direction:column;flex-wrap:nowrap;background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:4px 14px;gap:0;box-shadow:var(--shadow)}
+.brow{display:flex;align-items:center;gap:12px;width:100%;text-align:left;border:0;border-bottom:1px solid var(--line);border-radius:0;background:none;padding:11px 0}
+.brow:last-child{border-bottom:0}
+.chip.brow[aria-pressed="true"]{border-color:var(--line)}
+.chip.brow:last-child{border-bottom:0}
+.brow .nm{flex:1;min-width:0;display:flex;flex-direction:column;font-weight:600;font-size:14px}
+.brow .nm small{font-size:12px;color:var(--muted);font-weight:500}.brow .nm small.bad{color:var(--danger)}
+.brow .tick{width:22px;height:22px;border-radius:50%;border:2px solid var(--line);flex:none}
+.brow[aria-pressed="true"]{background:none;color:var(--ink)}
+.brow[aria-pressed="true"] .tick{border:0;background:var(--accent) url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 12l4 4 8-8'/%3E%3C/svg%3E") center/14px no-repeat}
+.app .ac{border-radius:16px;background:var(--surface);box-shadow:var(--shadow);border:1px solid var(--line)}
+.apps{background:var(--surface)}
+.panel{border-radius:24px 24px 0 0}
+.btn{border-radius:14px}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -228,36 +333,42 @@ header{align-items:center}
 <body>
 <div class="wrap">
   <header>
-    <h1>Money Buckets</h1>
-    <div class="hright"><span class="cycle num" id="cycle"></span><button type="button" class="hbtn" id="resetBtn" aria-label="Clear saved data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>
+    <div class="brand"><span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 8zM8 8V6a4 4 0 0 1 8 0v2"/></svg></span><div><h1>Money Buckets</h1><span class="pill" id="cycle"></span></div></div>
+    <div class="hright"><button type="button" class="hbtn" id="resetBtn" aria-label="Clear saved data"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3"/></svg></button></div>
   </header>
   <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
   <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
-  <p class="note" id="exNote">Example figures for preview. Tap Add income to start with your own salary.</p>
+  <div class="greet"><h2 class="hello" id="hello">Namaste</h2><span class="cycle" id="cycleLine"></span></div>
+  <p class="note" id="exNote">Example figures for preview. Tap Income at the bottom to start with your own.</p>
 
   <section class="summary" aria-label="This cycle">
-    <span class="label">Left this cycle</span>
-    <span class="big num" id="leftAll"></span>
-    <span class="of num" id="ofAll"></span>
+    <span class="label"><i></i>Left this cycle</span>
+    <div class="bigline"><span class="big num" id="leftAll"></span><span class="of num" id="ofAll"></span></div>
     <div class="bar"><i id="barAll"></i></div>
-    <div class="row num"><span id="cash"></span><span id="unas"></span><span id="spentAll"></span></div>
-    <button type="button" class="sumbtn" id="anBtn">See analysis</button>
+    <div class="row num"><span id="pctAvail"></span><span id="spentAll"></span></div>
+    <span class="unas num" id="unas"></span>
+    <div class="cashrow">
+      <span class="cic2" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/></svg></span>
+      <span class="cashtxt"><small>Cash in hand</small><b class="num" id="cash"></b></span>
+      <button type="button" class="sumbtn" id="anBtn">See analysis <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg></button>
+    </div>
   </section>
 
-  <div class="sechead bhead"><h2>Buckets</h2><button class="pill-btn sm" id="moveBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Move money</button></div>
-  <p class="hint">Tap a bucket to see what you spent from it. <b>Savings</b> opens your goals and <b>Loan EMI</b> your loans.</p>
+  <div class="sechead bhead"><h2 class="sh">Your Buckets <span class="cnt" id="bCount"></span></h2><button class="pill-btn sm" id="moveBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Move money</button></div>
   <div class="grid" id="grid"></div>
   <section class="recent" id="recent" hidden>
-    <div class="sechead"><h4>Recent payments</h4></div>
+    <div class="sechead"><h2 class="sh">Recent payments</h2></div>
     <div class="alist" id="recentList"></div>
   </section>
 </div>
 
-<nav class="actions" aria-label="Actions">
+<nav class="actions" aria-label="Main">
   <div class="in">
-    <button class="act" id="cashBtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5v5M18 9.5v5"/></svg></span><span>Cash</span></button>
-    <button class="act main" id="payBtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></span><span>Scan &amp; Pay</span></button>
-    <button class="act" id="incomeBtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Add income</span></button>
+    <button class="act on" id="homeTab" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></span><span>Home</span></button>
+    <button class="act" id="cashBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5v5M18 9.5v5"/></svg></span><span>Cash</span></button>
+    <button class="act main" id="payBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></span><span>Scan &amp; Pay</span></button>
+    <button class="act" id="incomeBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Income</span></button>
+    <button class="act" id="anTab" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></span><span>Analysis</span></button>
   </div>
 </nav>
 
@@ -333,7 +444,7 @@ header{align-items:center}
       <label class="flabel" for="pAmt">Amount</label>
       <input class="bigin num" id="pAmt" inputmode="numeric" placeholder="₹0" autocomplete="off">
       <span class="flabel">Pay from which bucket?</span>
-      <div class="chips" id="pBuckets"></div>
+      <div class="chips pb" id="pBuckets"></div>
       <label class="flabel" for="pTo">Paid to <i>(optional)</i></label>
       <input class="txtin" id="pTo" maxlength="40" placeholder="e.g. Das Grocery, vegetables" autocomplete="off">
       <div class="payee" id="pPayee" hidden>
@@ -428,21 +539,24 @@ function render(){
   const total=planned+state.unassigned;
   $('exNote').hidden=!state.example;
   $('cycle').textContent='Day '+day+' of cycle';
+  $('cycleLine').textContent='Cycle started '+fmtDate(state.start);
+  $('bCount').textContent=state.buckets.length+' active';
   const ut=state.untracked||0;
   $('leftAll').textContent=inr(total-spent-ut);
-  $('ofAll').textContent='of '+inr(total)+' this cycle';
+  $('ofAll').textContent='left of '+inr(total);
+  $('pctAvail').textContent=(total?Math.max(0,Math.round(100*(total-spent-ut)/total)):0)+'% available';
   $('barAll').style.width=(total?Math.max(0,100*(total-spent-ut)/total):0)+'%';
-  $('cash').textContent='Cash in hand '+inr(state.cash);
+  $('cash').textContent=inr(state.cash);
   $('unas').textContent=state.unassigned>0?'Unassigned '+inr(state.unassigned):'';
   const sb=state.buckets.find(x=>x.name==='Savings');
-  $('spentAll').textContent='Spent '+inr(spent-(sb?sb.spent:0)+ut);
+  $('spentAll').textContent=inr(spent-(sb?sb.spent:0)+ut)+' spent';
   const g=$('grid');g.innerHTML='';
   state.buckets.forEach(b=>{
     const left=b.planned-b.spent, used=b.planned?b.spent/b.planned:0;
     const sv=b.name==='Savings',ln=b.name==='Loan EMI';
     const el=document.createElement('article');
     el.className='b tap'+(sv?'':left<0?' over':used>=.85?' warn':'');
-    el.innerHTML=`<div class="ring"><span class="ic"></span></div><span class="left num"></span><span class="name"></span>`;
+    el.innerHTML=`<div class="ring"><span class="ic"></span></div><span class="name"></span><span class="left num"></span><span class="pct num"></span>`;
     el.querySelector('.ring').style.setProperty('--p',sv?0:Math.min(100,used*100));
     if(sv||ln){
       const bd=document.createElement('span');bd.className='badge';bd.innerHTML=svg('M9 6l6 6-6 6');el.querySelector('.ring').appendChild(bd);
@@ -456,13 +570,14 @@ function render(){
     }
     const ic=el.querySelector('.ic');
     if(ICONS[b.name])ic.innerHTML=svg(ICONS[b.name]);else ic.textContent=b.name.charAt(0).toUpperCase();
-    el.querySelector('.left').textContent=left<0?'Over '+inr(-left):inr(left);
+    el.querySelector('.left').textContent=left<0?'−'+inr(-left):inr(left)+' left';
+    el.querySelector('.pct').textContent=sv?'Tap for goals':left<0?'Over budget':ln?'Tap for loans':b.planned?Math.round(used*100)+'% used':'Not planned';
     el.querySelector('.name').textContent=b.name;
     el.title=b.planned?inr(b.spent)+' spent of '+inr(b.planned):'Not planned yet';
     g.appendChild(el);
   });
   const add=document.createElement('button');add.className='b add';
-  add.innerHTML=`<div class="ring"><span class="ic">${svg('M12 5v14M5 12h14')}</span></div><span class="left">&nbsp;</span><span class="name">Add bucket</span>`;
+  add.innerHTML=`<div class="ring"><span class="ic">${svg('M12 5v14M5 12h14')}</span></div><span class="name">Add bucket</span><span class="pct">Make your own</span>`;
   add.onclick=openSheet;g.appendChild(add);
   renderExtras();
 }
@@ -1021,7 +1136,10 @@ function renderPay(){
   $('pAmt').readOnly=!!(p&&p.am);
   const ch=$('pBuckets');ch.innerHTML='';
   state.buckets.filter(b=>b.name!=='Savings').forEach(b=>{
-    const lf=b.planned-b.spent,c=mk('button','chip',b.name+' · '+(lf<0?'over '+inr(-lf):inr(lf)));c.type='button';c.setAttribute('aria-pressed',b.name===pay.bucket);
+    const lf=b.planned-b.spent,c=mk('button','chip brow');c.type='button';c.setAttribute('aria-pressed',b.name===pay.bucket);
+    const bi=mk('span','mini');if(ICONS[b.name])bi.innerHTML=svg(ICONS[b.name]);else bi.textContent=b.name.charAt(0).toUpperCase();
+    const bt=mk('span','nm');bt.append(mk('span',null,b.name),mk('small','num'+(lf<0?' bad':''),lf<0?'Over by '+inr(-lf):inr(lf)+' left'));
+    c.append(bi,bt,mk('i','tick'));
     c.onclick=()=>{pay.bucket=b.name;ch.querySelectorAll('.chip').forEach(x=>x.setAttribute('aria-pressed','false'));c.setAttribute('aria-pressed','true');$('pErr').textContent='';payFoot()};
     ch.append(c);
   });
@@ -1140,11 +1258,15 @@ function renderExtras(){
   tx.slice(0,6).forEach(t=>{
     const r=mk('div','arow'),m=mk('span','mini');
     if(ICONS[t.bucket])m.innerHTML=svg(ICONS[t.bucket]);else m.textContent=t.bucket.charAt(0).toUpperCase();
-    const nm=mk('span','nm');nm.append(mk('span',null,t.name),mk('small',null,t.bucket+' · '+fmtDate(t.date)+(t.note?' · '+t.note:'')));
-    r.append(m,nm,mk('span','amtr num','−'+inr(t.amt)));rl.append(r);
+    const nm=mk('span','nm'),sm=mk('small');sm.append(document.createTextNode(fmtDate(t.date)+' · '),mk('em','bk',t.bucket));nm.append(mk('span',null,t.name),sm);
+    const am=mk('span','amtc');am.append(mk('b','amtr num','−'+inr(t.amt)),mk('small',null,t.app==='Cash'?'Cash':'UPI'));
+    r.append(m,nm,am);rl.append(r);
   });
 }
 $('payBtn').onclick=openPay;
+$('homeTab').onclick=()=>{document.querySelectorAll('.page').forEach(p=>p.hidden=true);sub=null;window.scrollTo({top:0,behavior:'smooth'})};
+$('anTab').onclick=()=>openSub('an');
+(function(){const h=new Date().getHours();$('hello').textContent=h<12?'Good morning':h<17?'Good afternoon':'Good evening'})();
 $('resetBtn').onclick=()=>openForm({title:'Clear saved data',ok:'Clear',
   sub:'Payments only: removes all payments and gives the money back to the buckets. Everything: deletes all buckets, payments, goals and loans on this phone. This cannot be undone.',
   fields:[{id:'what',type:'chips',label:'What do you want to clear?',options:[{v:'pay',t:'Payments only'},{v:'all',t:'Everything'}],value:'pay'}],
