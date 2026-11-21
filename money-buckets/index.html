@@ -6,7 +6,11 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="Money Buckets">
-<meta name="theme-color" content="#0E6B5C">
+<meta name="theme-color" content="#00796B">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
 <title>Money Buckets</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap">
 <style>
@@ -382,6 +386,13 @@ header{align-items:center}
 .ctxt small.nb{color:var(--loan);font-weight:600}
 .tapr{cursor:pointer}
 input[type=date].txtin{min-height:46px}
+.instbar{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--line);border-radius:16px;padding:10px;box-shadow:var(--shadow)}
+.instbar .logo{width:34px;height:34px;flex:none}
+.instbar .it{flex:1;min-width:0;display:flex;flex-direction:column;line-height:1.25}
+.instbar .it b{font-size:13.5px}.instbar .it small{font-size:11.5px;color:var(--muted)}
+.instbar .sumbtn{flex:none}
+.ix{width:28px;height:28px;border:0;background:none;color:var(--muted);display:grid;place-items:center;cursor:pointer;flex:none;padding:0}.ix svg{width:16px;height:16px}
+#fSub{white-space:pre-line}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -396,6 +407,12 @@ input[type=date].txtin{min-height:46px}
     <div class="hright"><button type="button" class="avatar me" id="meBtn" aria-label="Profile and settings"><span id="meInit"></span><i class="mdot" id="meDot" hidden></i></button><button type="button" id="resetBtn" hidden></button></div>
   </header>
   <button class="pendbar" id="pendBar" type="button" hidden><i class="dot"></i><span></span><b>Confirm</b></button>
+  <div class="instbar" id="instBar" hidden>
+    <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 8zM8 8V6a4 4 0 0 1 8 0v2"/></svg></span>
+    <span class="it"><b>Install Money Buckets</b><small id="instTxt">Use it like a real app</small></span>
+    <button type="button" class="sumbtn" id="instGo">Install</button>
+    <button type="button" class="ix" id="instX" aria-label="Dismiss"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
+  </div>
   <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
   <div class="greet"><div><h2 class="hello" id="hello">Namaste 👋</h2><span class="cycle" id="cycleLine"></span></div></div>
   <p class="note" id="exNote">Example figures for preview. Tap Income at the bottom to start with your own.</p>
@@ -782,7 +799,7 @@ let fCfg,fArm=false;
 function openForm(cfg){
   fCfg=cfg;fArm=false;
   $('fTitle').textContent=cfg.title;$('fSub').textContent=cfg.sub||'';$('fSub').hidden=!cfg.sub;
-  $('fErr').textContent='';$('fOk').textContent=cfg.ok;
+  $('fErr').textContent='';$('fOk').textContent=cfg.ok;$('fCancel').hidden=!cfg.fields.length;
   $('fDel').hidden=!cfg.onDelete;$('fDel').textContent=cfg.delLabel||'Remove';
   const box=$('fFields');box.innerHTML='';
   cfg.fields.forEach(f=>{
@@ -1202,6 +1219,7 @@ function renderMe(){
   l.append(setRow(CASHI.count,'Weekly cash check',(due?'Due now · ':'')+'Last counted '+(state.cashChecked?fmtDate(state.cashChecked):'never'),due?'Due':'',countCash));
   l.append(setRow('M5 12l4 4L19 7','Auto-fill suggested plan',state.autoPlan?'On · fills in your buckets when you add New Income':'Off · tap to switch on',state.autoPlan?'On':'',()=>{state.autoPlan=!state.autoPlan;done(state.autoPlan?'Auto-fill switched on':'Auto-fill switched off')}));
   l.append(setRow('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0','Your name',nm0||'Not set',null,editName));
+  if(!standalone())l.append(setRow('M12 4v12M7 11l5 5 5-5M5 20h14','Install as app',deferredPrompt?'Put it on your home screen, works offline':isIOS?'Add to Home Screen from Safari':'From your browser menu',null,installApp));
   l.append(setRow('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3','Clear saved data','Payments only, or everything',null,()=>$('resetBtn').click()));
   B.append(l);
 }
@@ -1429,7 +1447,34 @@ $('resetBtn').onclick=()=>openForm({title:'Clear saved data',ok:'Clear',
     done('Payments cleared and buckets restored');
   }});
 if(state.pending)setTimeout(askConfirm,600);
+
+/* Install as an app */
+let deferredPrompt=null;
+const standalone=()=>matchMedia('(display-mode: standalone)').matches||navigator.standalone===true;
+const iosSafari=()=>isIOS&&/Safari/.test(navigator.userAgent)&&!/CriOS|FxiOS|EdgiOS|OPiOS/.test(navigator.userAgent);
+function instDismissed(){try{return localStorage.getItem('mb.instX')==='1'}catch(e){return false}}
+function canInstall(){return !standalone()&&(!!deferredPrompt||isIOS)}
+function showInst(){
+  $('instBar').hidden=!canInstall()||instDismissed();
+  $('instTxt').textContent=deferredPrompt?'Use it like a real app, even offline':'Add it to your Home Screen';
+  $('instGo').textContent=deferredPrompt?'Install':'How';
+}
+addEventListener('beforeinstallprompt',e=>{e.preventDefault();deferredPrompt=e;showInst();refreshSub()});
+addEventListener('appinstalled',()=>{deferredPrompt=null;showInst();toast('Installed. Open it from your home screen')});
+function installApp(){
+  if(deferredPrompt){deferredPrompt.prompt();deferredPrompt.userChoice.finally(()=>{deferredPrompt=null;showInst()});return}
+  openForm({title:'Add to Home Screen',ok:'Got it',
+    sub:iosSafari()?'1. Tap the Share button at the bottom of Safari (the square with an arrow).\n2. Scroll down and tap "Add to Home Screen".\n3. Tap Add.\n\nMoney Buckets then opens like an app from its own icon.'
+      :isIOS?'Open this page in Safari first, then tap the Share button and choose "Add to Home Screen".'
+      :'Open your browser menu (⋮) and tap "Install app" or "Add to Home screen".',
+    fields:[],onSubmit:()=>{}});
+}
+$('instGo').onclick=installApp;
+$('instX').onclick=()=>{try{localStorage.setItem('mb.instX','1')}catch(e){};$('instBar').hidden=true};
+showInst();
+
 render();
 </script>
+<script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}</script>
 </body>
 </html>
