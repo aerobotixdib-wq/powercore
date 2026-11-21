@@ -415,7 +415,7 @@ input[type=date].txtin{min-height:46px}
   </div>
   <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
   <div class="greet"><div><h2 class="hello" id="hello">Namaste 👋</h2><span class="cycle" id="cycleLine"></span></div></div>
-  <p class="note" id="exNote">Example figures for preview. Tap Income at the bottom to start with your own.</p>
+  <p class="note" id="exNote">All clear. Tap <b>Income</b> at the bottom to add your money and start.</p>
 
   <section class="summary" aria-label="This cycle">
     <span class="label"><i></i>Left this cycle</span>
@@ -616,7 +616,7 @@ function render(){
   const spent=state.buckets.reduce((a,b)=>a+b.spent,0);
   const day=Math.max(1,Math.floor((Date.now()-new Date(state.start+'T00:00'))/864e5)+1);
   const total=planned+state.unassigned;
-  $('exNote').hidden=true;
+  $('exNote').hidden=state.example||(planned+state.unassigned)>0;
   $('cycle').textContent='Day '+day+' of cycle';
   $('cycleLine').textContent='Cycle started '+fmtDate(state.start);
   $('bCount').textContent=state.buckets.length+' active';
@@ -741,7 +741,7 @@ $('incNext').onclick=()=>{
   if(inc.type==='new'){
     const carry=carryAmount();
     const sav=state.buckets.find(isSav),savLeft=(!state.example&&sav)?Math.max(0,sav.planned-sav.spent):0;
-    if(!state.example)state.history.push({start:state.start,end:today(),buckets:state.buckets.map(b=>({...b})),unassigned:state.unassigned,income:state.income,untracked:state.untracked||0});
+    if(!state.example&&(state.income||state.buckets.some(b=>b.planned||b.spent)))state.history.push({start:state.start,end:today(),buckets:state.buckets.map(b=>({...b})),unassigned:state.unassigned,income:state.income,untracked:state.untracked||0});
     state.buckets=state.buckets.map(b=>({name:b.name,planned:(inc.alloc[b.name]||0)+(isSav(b)?savLeft+carry:0),spent:0}));
     if(state.example){state.goals=state.goals.filter(g=>!g.ex);state.loans=state.loans.filter(l=>!l.ex);state.txns=state.txns.filter(t=>!t.ex);state.history=state.history.filter(h=>!h.ex)}
     const dues=state.loans.filter(isCard).map(l=>[l,nextBill(l)]);
@@ -1441,7 +1441,12 @@ $('resetBtn').onclick=()=>openForm({title:'Clear saved data',ok:'Clear',
   sub:'Payments only: removes all payments and gives the money back to the buckets. Everything: deletes all buckets, payments, goals and loans on this phone. This cannot be undone.',
   fields:[{id:'what',type:'chips',label:'What do you want to clear?',options:[{v:'pay',t:'Payments only'},{v:'all',t:'Everything'}],value:'pay'}],
   onSubmit:v=>{
-    if(v.what==='all'){try{localStorage.removeItem(KEY)}catch(e){}location.reload();return}
+    if(v.what==='all'){
+      const fresh={start:today(),cycId:'c'+Date.now(),cash:0,example:false,unassigned:0,untracked:0,history:[],txns:[],goals:[],loans:[],merchants:{},pending:null,cashLog:[],
+        buckets:defaults.map(b=>({name:b.name,planned:0,spent:0}))};
+      try{localStorage.setItem(KEY,JSON.stringify(fresh))}catch(e){}
+      location.reload();return;
+    }
     state.txns.forEach(t=>{if(t.date>=state.start){const b=state.buckets.find(x=>x.name===t.bucket);if(b)b.spent=Math.max(0,b.spent-t.amt)}});
     state.txns=[];state.pending=null;state.merchants={};
     done('Payments cleared and buckets restored');
