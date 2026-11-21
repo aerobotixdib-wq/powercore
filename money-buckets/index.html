@@ -424,6 +424,7 @@ input[type=date].txtin{min-height:46px}
 .wrap{padding-block:12px 28px}
 .toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))!important}
 .greet+.actions{margin-top:34px}
+.act .ms.nav{font-size:24px;font-variation-settings:'FILL' 0,'wght' 400,'GRAD' 0,'opsz' 24}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -448,7 +449,7 @@ input[type=date].txtin{min-height:46px}
   <div class="greet"><div><h2 class="hello" id="hello">Namaste 👋</h2><span class="cycle" id="cycleLine"></span></div></div>
   <nav class="actions" aria-label="Main">
     <div class="in">
-      <button class="act on" id="homeTab" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></span><span>Home</span></button>
+      <button class="act" id="homeTab" type="button"><span class="ic"><span class="ms nav">savings</span></span><span>Goals</span></button>
       <button class="act" id="cashBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5v5M18 9.5v5"/></svg></span><span>Cash</span></button>
       <button class="act main" id="payBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></span><span>Scan &amp; Pay</span></button>
       <button class="act" id="incomeBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Income</span></button>
@@ -1380,7 +1381,7 @@ const AS_EXACT={
 'Cancel':'বাতিল','Got it':'বুজিলোঁ','Tap again to confirm':'নিশ্চিত কৰিবলৈ আকৌ টিপক','Delete this payment':'এই payment মচক','Edit payment':'Payment সলনি কৰক',
 'From':'ক’ৰ পৰা','To':'ক’লৈ','Move':'Move কৰক','Payment deleted':'Payment মচা হ’ল','Payment updated':'Payment সলনি হ’ল','New cycle started':'নতুন cycle আৰম্ভ হ’ল',
 'Nothing deducted':'একো কটা নহ’ল','Name saved':'নাম save হ’ল','Extra income added':'Extra income যোগ হ’ল','Where the money went ':'টকা ক’লৈ গ’ল',
-'Install':'Install','Analysis':'Analysis','Income':'Income','Home':'Home','Cash':'Cash','No payments recorded in this cycle.':'এই cycle ত কোনো payment লিখা নাই।',
+'Install':'Install','Analysis':'Analysis','Income':'Income','Home':'Home','Goals':'Goals','Cash':'Cash','No payments recorded in this cycle.':'এই cycle ত কোনো payment লিখা নাই।',
 'Enter your PIN':'আপোনাৰ PIN দিয়ক','Set a 4-digit PIN':'৪ অংকৰ PIN বাছক','Enter the PIN again':'PIN টো আকৌ দিয়ক','Enter your current PIN':'আপোনাৰ বৰ্তমানৰ PIN দিয়ক',
 'Wrong PIN. Try again.':'ভুল PIN। আকৌ চেষ্টা কৰক।','The PINs did not match. Try again.':'PIN দুটা নিমিলিল। আকৌ চেষ্টা কৰক।','Forgot PIN?':'PIN পাহৰিলে?',
 'App lock switched on':'App Lock On হ’ল','App lock switched off':'App Lock বন্ধ হ’ল','Change PIN':'PIN সলনি কৰক','Turn off lock':'Lock বন্ধ কৰক',
@@ -1636,7 +1637,7 @@ function renderExtras(){
   });
 }
 $('payBtn').onclick=openPay;
-$('homeTab').onclick=()=>{document.querySelectorAll('.page').forEach(p=>p.hidden=true);sub=null;window.scrollTo({top:0,behavior:'smooth'})};
+$('homeTab').onclick=()=>openSub('sav');
 $('anTab').onclick=()=>openSub('an');
 
 $('resetBtn').onclick=()=>openForm({title:'Clear saved data',ok:'Clear',
