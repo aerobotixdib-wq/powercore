@@ -404,6 +404,19 @@ input[type=date].txtin{min-height:46px}
 .b.over .ring .ic{color:var(--danger)!important;background:var(--danger-soft)!important}
 .add .ring .ic{background:transparent!important}
 @media (prefers-reduced-motion:no-preference){.toast{animation:pop .25s ease}@keyframes pop{from{transform:translate(-50%,8px);opacity:0}to{transform:translate(-50%,0);opacity:1}}}
+.lock{position:fixed;inset:0;z-index:70;background:var(--bg);display:flex;align-items:center;justify-content:center;padding:max(24px,env(safe-area-inset-top,0px)) 16px max(24px,env(safe-area-inset-bottom,0px))}
+.lin{display:flex;flex-direction:column;align-items:center;gap:14px;width:100%;max-width:320px}
+.logo.big{width:56px;height:56px;border-radius:16px}.logo.big svg{width:30px;height:30px}
+.lin h3{margin:4px 0 0;font:800 20px var(--display)}
+.ldots{display:flex;gap:16px;margin:6px 0}.ldots i{width:14px;height:14px;border-radius:50%;border:2px solid var(--accent)}.ldots i.on{background:var(--accent)}
+@media (prefers-reduced-motion:no-preference){.ldots.shake{animation:shk .35s}@keyframes shk{25%{transform:translateX(-8px)}50%{transform:translateX(8px)}75%{transform:translateX(-4px)}}}
+.lmsg{min-height:1.3em;margin:0;font-size:13px;color:var(--muted);text-align:center}.lmsg.bad{color:var(--danger)}
+.lpad{display:grid;grid-template-columns:repeat(3,72px);gap:14px 22px;margin-top:4px}
+.lpad button{width:72px;height:72px;border-radius:50%;border:0;background:var(--surface);box-shadow:var(--shadow);font:700 26px var(--display);color:var(--ink);cursor:pointer;display:grid;place-items:center}
+.lpad button svg{width:26px;height:26px}.lpad button:active{background:var(--accent-soft)}
+.lacts{display:flex;gap:10px}
+.btn.danger{background:var(--danger);color:#fff;width:100%}
+.lang-as{--body:'Plus Jakarta Sans','Noto Sans Bengali',system-ui,sans-serif;--display:'Plus Jakarta Sans','Noto Sans Bengali',system-ui,sans-serif}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -566,6 +579,23 @@ input[type=date].txtin{min-height:46px}
     <button type="button" class="btn primary" id="cYes">Yes, payment done</button>
     <button type="button" class="btn" id="cNo">No, it failed</button>
     <button type="button" class="dangerlink mutedl" id="cWait">Still checking, ask me later</button>
+  </div>
+</div>
+
+<div class="lock" id="lock" hidden>
+  <div class="lin">
+    <span class="logo big" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h16l-1.5 11a2 2 0 0 1-2 1.7H7.5a2 2 0 0 1-2-1.7L4 8zM8 8V6a4 4 0 0 1 8 0v2"/></svg></span>
+    <h3 id="lockTitle">Enter your PIN</h3>
+    <div class="ldots" id="lockDots"><i></i><i></i><i></i><i></i></div>
+    <p class="lmsg" id="lockMsg"></p>
+    <div class="lpad" id="lockPad">
+      <button type="button" data-k="1">1</button><button type="button" data-k="2">2</button><button type="button" data-k="3">3</button>
+      <button type="button" data-k="4">4</button><button type="button" data-k="5">5</button><button type="button" data-k="6">6</button>
+      <button type="button" data-k="7">7</button><button type="button" data-k="8">8</button><button type="button" data-k="9">9</button>
+      <span></span><button type="button" data-k="0">0</button><button type="button" data-k="del" aria-label="Delete"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 5H9l-6 7 6 7h12zM18 9l-6 6M12 9l6 6"/></svg></button>
+    </div>
+    <div class="lacts"><button type="button" class="linkbtn" id="lockForgot">Forgot PIN?</button><button type="button" class="linkbtn" id="lockCancel">Cancel</button></div>
+    <button type="button" class="btn danger" id="lockReset" hidden>Clear all data</button>
   </div>
 </div>
 
@@ -1249,6 +1279,8 @@ function renderMe(){
   l.append(setRow(CASHI.count,'Weekly cash check',(due?'Due now · ':'')+'Last counted '+(state.cashChecked?fmtDate(state.cashChecked):'never'),due?'Due':'',countCash));
   l.append(setRow('M5 12l4 4L19 7','Auto-fill suggested plan',state.autoPlan?'On · fills in your buckets when you add New Income':'Off · tap to switch on',state.autoPlan?'On':'',()=>{state.autoPlan=!state.autoPlan;done(state.autoPlan?'Auto-fill switched on':'Auto-fill switched off')}));
   l.append(setRow('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0','Your name',nm0||'Not set',null,editName));
+  l.append(setRow('M12 21a9 9 0 1 0 0-18 9 9 0 0 0 0 18zM3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18','Language',state.lang==='as'?'অসমীয়া':'English',null,setLanguage));
+  l.append(setRow('M6 11h12v9H6zM8 11V8a4 4 0 0 1 8 0v3','App lock',state.pin?'On · asks for your PIN when the app opens':'Off · protect the app with a 4-digit PIN',state.pin?'On':'',appLockSetting));
   if(!standalone())l.append(setRow('M12 4v12M7 11l5 5 5-5M5 20h14','Install as app',deferredPrompt?'Put it on your home screen, works offline':isIOS?'Add to Home Screen from Safari':'From your browser menu',null,installApp));
   l.append(setRow('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3','Clear saved data','Payments only, or everything',null,()=>$('resetBtn').click()));
   B.append(l);
@@ -1302,6 +1334,138 @@ function editTxn(t){
     delLabel:'Delete this payment',
     onDelete:()=>{txApply(t,-1);state.txns=state.txns.filter(x=>x!==t);done('Payment deleted')}});
 }
+/* ===== Language: English (default) or Assamese ===== */
+const AS_EXACT={
+'Your Buckets':'আপোনাৰ Buckets','# active':'# টা active','Move money':'টকা Move কৰক','Left this cycle':'এই cycle ত বাকী',
+'left of #':'# ৰ ভিতৰত বাকী','#% available':'#% বাকী আছে','# spent':'# খৰচ হ’ল','Cash in hand':'হাতত থকা Cash','Cash in hand:':'হাতত থকা Cash:',
+'See analysis':'Analysis চাওক','Day # of cycle':'Cycle ৰ # নং দিন','# left':'# বাকী','#% used':'#% খৰচ হ’ল','Not planned':'Plan কৰা নাই',
+'Tap for goals':'Goals চাবলৈ টিপক','Tap for loans':'Loans চাবলৈ টিপক','Over budget':'Budget পাৰ হ’ল','+# on card':'Card ত +#',
+'Add bucket':'Bucket যোগ কৰক','Make your own':'নিজৰ বনাওক','Recent payments':'শেহতীয়া Payments','Credit card':'Credit card',
+'Install Money Buckets':'Money Buckets Install কৰক','Add it to your Home Screen':'Home Screen ত যোগ কৰক','How':'কেনেকৈ',
+'Use it like a real app, even offline':'আচল app ৰ দৰে চলাওক, internet নহ’লেও','All clear. Tap':'সকলো পৰিষ্কাৰ। তলৰ',
+'at the bottom to add your money and start.':'টিপি আপোনাৰ টকা যোগ কৰক আৰু আৰম্ভ কৰক।',
+'Profile & settings':'Profile আৰু Settings','Add your name':'আপোনাৰ নাম দিয়ক','Your data stays on this phone':'আপোনাৰ data এই phone তেই থাকে',
+'Weekly cash check':'সাপ্তাহিক Cash check','Due':'বাকী','Auto-fill suggested plan':'Suggested plan নিজে ভৰাওক','Off · tap to switch on':'বন্ধ · On কৰিবলৈ টিপক',
+'On · fills in your buckets when you add New Income':'On · New Income যোগ কৰোঁতে buckets নিজে ভৰাই দিয়ে','On':'On','Your name':'আপোনাৰ নাম','Not set':'দিয়া নাই',
+'Install as app':'App হিচাপে Install কৰক','Add to Home Screen from Safari':'Safari ৰ পৰা Home Screen ত যোগ কৰক','Clear saved data':'Save কৰা data মচক',
+'Payments only, or everything':'কেৱল Payments, বা সকলো','Language':'ভাষা','App lock':'App Lock','Off · protect the app with a 4-digit PIN':'বন্ধ · ৪ অংকৰ PIN দি app সুৰক্ষিত কৰক',
+'On · asks for your PIN when the app opens':'On · app খোলোঁতে PIN সুধিব',
+'Pay':'Pay','Amount':'টকাৰ পৰিমাণ','Pay from which bucket?':'কোন bucket ৰ পৰা দিব?','Paid to':'কাক দিলে','(optional)':'(ইচ্ছা হ’লে)','Date':'তাৰিখ',
+'(change it for a payment you forgot to add)':'(আগতে কৰা payment হ’লে তাৰিখ সলনি কৰক)','Pay with':'কিহেৰে দিব',
+'Your UPI app opens. Scan the QR code there and pay, then come back here and tap Yes.':'আপোনাৰ UPI app খোল খাব। তাত QR code scan কৰি pay কৰক, তাৰ পিছত ইয়ালৈ উভতি আহি Yes টিপক।',
+'Shop QR? Scan it here':'দোকানৰ QR? ইয়াতে scan কৰক','I paid another way':'অন্য উপায়েৰে দিলোঁ','Choose a bucket':'এটা bucket বাছক','to pay from':'য’ৰ পৰা দিব',
+'Type the amount first.':'আগতে টকাৰ পৰিমাণ লিখক।','Choose a bucket to pay from.':'কোন bucket ৰ পৰা দিব বাছক।','Other UPI app':'অন্য UPI app',
+'e.g. Das Grocery, vegetables':'যেনে Das Grocery, পাচলি','Yes, payment done':'হয়, payment হ’ল','No, it failed':'নাই, payment নহ’ল','Still checking, ask me later':'এতিয়াও চাই আছোঁ, পিছত সুধিব',
+'Did your payment of # go through?':'আপোনাৰ # ৰ payment হ’লনে?','Add income':'Income যোগ কৰক','New Income':'New Income','Starts a new cycle':'নতুন cycle আৰম্ভ হয়',
+'Extra income':'Extra Income','Bonus or incentive, added to this cycle':'Bonus বা incentive, এই cycle তে যোগ হয়','Amount received':'পোৱা টকাৰ পৰিমাণ','Next':'পিছলৈ',
+'Save':'Save কৰক','Use last cycle\'s plan':'যোৱা cycle ৰ plan ব্যৱহাৰ কৰক','Use suggested plan':'Suggested plan ব্যৱহাৰ কৰক',
+'Fill how much goes into each bucket this cycle.':'এই cycle ত কোন bucket ত কিমান যাব লিখক।','Left to assign':'ভাগ কৰিবলৈ বাকী','All assigned':'সকলো ভাগ হ’ল','Over by':'বেছি হৈছে',
+'Last cycle #':'যোৱা cycle #','Type the amount you received.':'পোৱা টকাৰ পৰিমাণ লিখক।','Loans':'Loans','Main balance':'মূল Balance','From salary #':'Income ৰ পৰা #',
+'Paid to loans #':'Loans ত দিয়া #','Your loans':'আপোনাৰ Loans','+ Add loan':'+ Loan যোগ কৰক','Paid':'দিয়া হ’ল','Next bill so far #':'পিছৰ bill এতিয়ালৈ #',
+'No loans added':'কোনো loan যোগ কৰা নাই','Monthly interest':'মাহেকীয়া Interest','Other':'অন্য','Savings':'Savings','Total saved':'মুঠ জমা','Free in Savings #':'Savings ত খালী #',
+'In goals #':'Goals ত #','Goal pockets':'Goal pockets','+ New goal':'+ নতুন Goal','Add money':'টকা দিয়ক','Use money':'টকা ব্যৱহাৰ কৰক','Edit':'সলনি কৰক',
+'No target · keeps growing':'Target নাই · বাঢ়ি থাকিব','Spent cash':'Cash খৰচ কৰিলোঁ','Took out cash':'Cash উলিয়ালোঁ','Count my cash':'Cash গণনা কৰক','Cash history':'Cash ৰ হিচাপ',
+'Untracked this cycle #':'এই cycle ত হিচাপৰ বাহিৰত #','Last counted never':'এতিয়ালৈ গণনা কৰা নাই','Planned vs spent':'Plan বনাম খৰচ','Where the money went':'টকা ক’লৈ গ’ল',
+'Repeat overspending':'বাৰে বাৰে বেছি খৰচ','Not spent each cycle':'প্ৰতি cycle ত খৰচ নোহোৱা টকা','Suggested plan for next cycle':'পিছৰ cycle ৰ বাবে Suggested plan',
+'Use this plan for this cycle':'এই cycle ত এই plan ব্যৱহাৰ কৰক','This cycle':'এই cycle','Income #':'Income #','Not spent #':'খৰচ নোহোৱা #','Whatever is left':'যি বাকী থাকে',
+'Planned #':'Plan #','Spent #':'খৰচ #','Earlier cycles':'আগৰ cycles','Nothing spent from this bucket yet in this cycle.':'এই cycle ত এই bucket ৰ পৰা এতিয়ালৈ খৰচ হোৱা নাই।',
+'Cancel':'বাতিল','Got it':'বুজিলোঁ','Tap again to confirm':'নিশ্চিত কৰিবলৈ আকৌ টিপক','Delete this payment':'এই payment মচক','Edit payment':'Payment সলনি কৰক',
+'From':'ক’ৰ পৰা','To':'ক’লৈ','Move':'Move কৰক','Payment deleted':'Payment মচা হ’ল','Payment updated':'Payment সলনি হ’ল','New cycle started':'নতুন cycle আৰম্ভ হ’ল',
+'Nothing deducted':'একো কটা নহ’ল','Name saved':'নাম save হ’ল','Extra income added':'Extra income যোগ হ’ল','Where the money went ':'টকা ক’লৈ গ’ল',
+'Install':'Install','Analysis':'Analysis','Income':'Income','Home':'Home','Cash':'Cash','No payments recorded in this cycle.':'এই cycle ত কোনো payment লিখা নাই।',
+'Enter your PIN':'আপোনাৰ PIN দিয়ক','Set a 4-digit PIN':'৪ অংকৰ PIN বাছক','Enter the PIN again':'PIN টো আকৌ দিয়ক','Enter your current PIN':'আপোনাৰ বৰ্তমানৰ PIN দিয়ক',
+'Wrong PIN. Try again.':'ভুল PIN। আকৌ চেষ্টা কৰক।','The PINs did not match. Try again.':'PIN দুটা নিমিলিল। আকৌ চেষ্টা কৰক।','Forgot PIN?':'PIN পাহৰিলে?',
+'App lock switched on':'App Lock On হ’ল','App lock switched off':'App Lock বন্ধ হ’ল','Change PIN':'PIN সলনি কৰক','Turn off lock':'Lock বন্ধ কৰক',
+'What do you want to do?':'কি কৰিব বিচাৰে?','Clear all data':'সকলো data মচক',
+'If you forgot your PIN, the only way in is to clear all data on this phone. This cannot be undone.':'PIN পাহৰিলে, এই phone ৰ সকলো data মচাৰ বাহিৰে আন উপায় নাই। ইয়াক ঘূৰাই আনিব নোৱাৰি।',
+'Example figures. Your own analysis appears after your first full cycle.':'উদাহৰণৰ হিচাপ। আপোনাৰ প্ৰথম সম্পূৰ্ণ cycle ৰ পিছত নিজৰ Analysis দেখা পাব।',
+'Money moved into a goal is saving, not spending. RD, SIP or FD money can sit in a goal too.':'Goal লৈ নিয়া টকা জমা, খৰচ নহয়। RD, SIP বা FD ৰ টকাও goal ত ৰাখিব পাৰে।',
+'Taking cash out of the bank is not spending. A bucket only goes down when you spend the cash. Count your cash once a week, and any money you can\'t account for shows as untracked.':'Bank ৰ পৰা cash উলিওৱাটো খৰচ নহয়। Cash খৰচ কৰিলেহে bucket কমে। সপ্তাহত এবাৰ cash গণনা কৰক, হিচাপ নোপোৱা টকা untracked হিচাপে দেখুৱাব।',
+'Income minus spending. Left-over money moves to Savings when a new cycle starts.':'Income ৰ পৰা খৰচ বাদ দি। নতুন cycle আৰম্ভ হ’লে বাকী টকা Savings লৈ যায়।'
+};
+const AS_RE=[
+[/^Namaste, (.+?) 👋$/,'নমস্কাৰ, $1 👋'],[/^Cycle started (.+)$/,'$1 ৰ পৰা cycle আৰম্ভ'],[/^(₹[\d,]+) taken from (.+)$/,'$2 ৰ পৰা $1 কটা হ’ল'],
+[/^New cycle started\. (₹[\d,]+) moved to Savings$/,'নতুন cycle আৰম্ভ হ’ল। $1 Savings লৈ গ’ল'],[/^(₹[\d,]+) moved to (.+)$/,'$1 $2 লৈ গ’ল'],
+[/^(₹[\d,]+) on (.+)\. Added to its next bill$/,'$2 ত $1 · পিছৰ bill ত যোগ হ’ল'],[/^(.+) left after this$/,'ইয়াৰ পিছত $1 ত বাকী'],[/^(.+) will be over by$/,'$1 ৰ budget পাৰ হ’ব'],
+[/^(₹[\d,]+) of (₹[\d,]+)$/,'$2 ৰ ভিতৰত $1'],[/^Over by (₹[\d,]+)$/,'$1 বেছি'],[/^Pay (.+)$/,'$1 ক Pay কৰক'],[/^Last counted (.+)$/,'শেষ গণনা $1'],
+[/^Due now · Last counted (.+)$/,'এতিয়া কৰিব লাগে · শেষ গণনা $1'],[/^Spending fast: (\d+)% used with (\d+)% of the cycle gone$/,'সোনকালে খৰচ হৈছে: cycle ৰ $2% পাৰ হৈছে, $1% খৰচ হ’ল'],
+[/^(.+) went over in (\d+) of the last (\d+) cycles\.$/,'যোৱা $3 টা cycle ৰ $2 টাত $1 ৰ budget পাৰ হৈছিল।'],[/^Average of last (\d+) cycles?$/,'যোৱা $1 টা cycle ৰ গড়'],
+[/^This cycle so far · day (\d+)$/,'এই cycle এতিয়ালৈ · $1 নং দিন'],[/^(?:To (.+)\. )?Check your payment app\. If it says successful, tap Yes and (₹[\d,]+) will come off (.+)\.$/,'আপোনাৰ payment app চাওক। Successful দেখুৱালে Yes টিপক, $3 ৰ পৰা $2 কটা যাব।'],
+[/^(.+) · (\d+) payments?$/,'$1 · $2 টা payment'],[/^(\d+) payments?$/,'$1 টা payment']
+];
+const NUMRE=/₹[\d,]+(?:\.\d+)?|\d[\d,]*(?:\.\d+)?/g;
+function trAs(raw){
+  const lead=raw.match(/^\s*/)[0],tail=raw.match(/\s*$/)[0],s=raw.trim();if(!s)return raw;
+  const toks=[];const key=s.replace(NUMRE,m=>{toks.push(m);return '#'});
+  let out=AS_EXACT[key];
+  if(out!=null){let k=0;out=out.replace(/#/g,()=>toks[k++]??'');return lead+out+tail}
+  for(const [re,rp] of AS_RE)if(re.test(s))return lead+s.replace(re,rp)+tail;
+  return raw;
+}
+function trNode(root){
+  if(state.lang!=='as')return;
+  const w=document.createTreeWalker(root,NodeFilter.SHOW_TEXT);let n;
+  while(n=w.nextNode()){if(n.parentElement&&n.parentElement.closest('script,style,.ms'))continue;const t=trAs(n.nodeValue);if(t!==n.nodeValue)n.nodeValue=t}
+  if(root.querySelectorAll)root.querySelectorAll('input[placeholder]').forEach(i=>{const t=trAs(i.placeholder);if(t!==i.placeholder)i.placeholder=t});
+}
+function i18nInit(){
+  if(state.lang!=='as')return;
+  document.documentElement.lang='as';
+  const l=document.createElement('link');l.rel='stylesheet';l.href='https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&display=swap';document.head.append(l);
+  document.documentElement.classList.add('lang-as');
+  trNode(document.body);
+  new MutationObserver(ms=>{for(const m of ms){
+    if(m.type==='characterData'){const t=trAs(m.target.nodeValue);if(t!==m.target.nodeValue)m.target.nodeValue=t}
+    else m.addedNodes.forEach(n=>{if(n.nodeType===3){const t=trAs(n.nodeValue);if(t!==n.nodeValue)n.nodeValue=t}else if(n.nodeType===1)trNode(n)})
+  }}).observe(document.body,{childList:true,subtree:true,characterData:true});
+}
+function setLanguage(){openForm({title:'Language',ok:'Save',fields:[{id:'lang',type:'chips',label:'Choose the app language',options:[{v:'en',t:'English'},{v:'as',t:'অসমীয়া (Assamese)'}],value:state.lang||'en'}],
+  onSubmit:v=>{state.lang=v.lang;save();location.reload()}})}
+
+/* ===== App lock (4-digit PIN) ===== */
+function hashPin(p){let h=0x811c9dc5;const s='mb-pin:'+p;for(let i=0;i<s.length;i++){h^=s.charCodeAt(i);h=Math.imul(h,0x01000193)>>>0}return h.toString(16)}
+let lk={mode:null,val:'',first:'',then:null},hiddenAt=0;
+function lockMsg(t,bad){const m=$('lockMsg');m.textContent=t||'';m.className='lmsg'+(bad?' bad':'');}
+function showLock(mode,then){
+  lk={mode,val:'',first:'',then:then||null};
+  $('lockTitle').textContent=mode==='unlock'?'Enter your PIN':mode==='set1'?'Set a 4-digit PIN':mode==='set2'?'Enter the PIN again':'Enter your current PIN';
+  $('lockCancel').hidden=mode==='unlock';$('lockForgot').hidden=mode!=='unlock';$('lockReset').hidden=true;
+  lockMsg('');drawDots();$('lock').hidden=false;
+}
+function drawDots(){document.querySelectorAll('#lockDots i').forEach((d,k)=>d.classList.toggle('on',k<lk.val.length))}
+function lockKey(k){
+  if(k==='del'){lk.val=lk.val.slice(0,-1);drawDots();return}
+  if(lk.val.length>=4)return;lk.val+=k;drawDots();
+  if(lk.val.length<4)return;
+  const v=lk.val;setTimeout(()=>{
+    if(lk.mode==='unlock'||lk.mode==='verify'){
+      if(hashPin(v)===state.pin){$('lock').hidden=true;const t=lk.then;lk.then=null;if(t)t()}
+      else{lk.val='';drawDots();lockMsg('Wrong PIN. Try again.',true);shake()}
+    }else if(lk.mode==='set1'){lk.first=v;lk.val='';lk.mode='set2';$('lockTitle').textContent='Enter the PIN again';drawDots();lockMsg('')}
+    else if(lk.mode==='set2'){
+      if(v===lk.first){state.pin=hashPin(v);$('lock').hidden=true;done('App lock switched on')}
+      else{lk.mode='set1';lk.val='';lk.first='';$('lockTitle').textContent='Set a 4-digit PIN';drawDots();lockMsg('The PINs did not match. Try again.',true);shake()}
+    }
+  },120);
+}
+function shake(){const d=$('lockDots');d.classList.remove('shake');void d.offsetWidth;d.classList.add('shake');try{navigator.vibrate&&navigator.vibrate([30,40,30])}catch(e){}}
+document.querySelectorAll('#lockPad button[data-k]').forEach(b=>b.onclick=()=>lockKey(b.dataset.k));
+$('lockCancel').onclick=()=>{$('lock').hidden=true};
+$('lockForgot').onclick=()=>{lockMsg('If you forgot your PIN, the only way in is to clear all data on this phone. This cannot be undone.');$('lockReset').hidden=false};
+let resetArm=false;$('lockReset').onclick=()=>{
+  if(!resetArm){resetArm=true;$('lockReset').textContent=state.lang==='as'?'নিশ্চিত কৰিবলৈ আকৌ টিপক':'Tap again to confirm';return}
+  try{localStorage.removeItem(KEY)}catch(e){}location.reload();
+};
+function appLockSetting(){
+  if(!state.pin){showLock('set1');return}
+  openForm({title:'App lock',ok:'Continue',fields:[{id:'act',type:'chips',label:'What do you want to do?',options:[{v:'change',t:'Change PIN'},{v:'off',t:'Turn off lock'}],value:'change'}],
+    onSubmit:v=>{setTimeout(()=>showLock('verify',()=>{if(v.act==='off'){state.pin=null;done('App lock switched off')}else showLock('set1')}),50)}});
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden)hiddenAt=Date.now();
+  else if(state.pin&&hiddenAt&&Date.now()-hiddenAt>60000&&$('lock').hidden)showLock('unlock');
+});
+
 /* Pay: amount and bucket here, scan inside the UPI app */
 let pay={},askTimer=null;
 const APPS=[
@@ -1481,7 +1645,8 @@ $('resetBtn').onclick=()=>openForm({title:'Clear saved data',ok:'Clear',
     state.txns=[];state.pending=null;state.merchants={};
     done('Payments cleared and buckets restored');
   }});
-if(state.pending)setTimeout(askConfirm,600);
+if(state.pending&&!state.pin)setTimeout(askConfirm,600);
+if(state.pin)showLock('unlock',()=>{if(state.pending)askConfirm()});
 
 /* Install as an app */
 let deferredPrompt=null;
@@ -1509,6 +1674,7 @@ $('instX').onclick=()=>{try{localStorage.setItem('mb.instX','1')}catch(e){};$('i
 showInst();
 
 render();
+i18nInit();
 </script>
 <script>if('serviceWorker' in navigator){addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}))}</script>
 </body>
