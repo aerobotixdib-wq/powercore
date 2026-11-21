@@ -423,6 +423,7 @@ input[type=date].txtin{min-height:46px}
 .actions .in{max-width:none}
 .wrap{padding-block:12px 28px}
 .toast{bottom:calc(24px + env(safe-area-inset-bottom,0px))!important}
+.greet+.actions{margin-top:34px}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -445,6 +446,15 @@ input[type=date].txtin{min-height:46px}
   </div>
   <button class="pendbar" id="cashBar" type="button" hidden><i class="dot"></i><span>Weekly cash check: count the cash in your wallet</span><b>Count</b></button>
   <div class="greet"><div><h2 class="hello" id="hello">Namaste 👋</h2><span class="cycle" id="cycleLine"></span></div></div>
+  <nav class="actions" aria-label="Main">
+    <div class="in">
+      <button class="act on" id="homeTab" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></span><span>Home</span></button>
+      <button class="act" id="cashBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5v5M18 9.5v5"/></svg></span><span>Cash</span></button>
+      <button class="act main" id="payBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></span><span>Scan &amp; Pay</span></button>
+      <button class="act" id="incomeBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Income</span></button>
+      <button class="act" id="anTab" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></span><span>Analysis</span></button>
+    </div>
+  </nav>
   <p class="note" id="exNote">All clear. Tap <b>Income</b> at the bottom to add your money and start.</p>
 
   <section class="summary" aria-label="This cycle">
@@ -462,15 +472,6 @@ input[type=date].txtin{min-height:46px}
 
   <div class="sechead bhead"><h2 class="sh">Your Buckets <span class="cnt" id="bCount"></span></h2><button class="pill-btn sm" id="moveBtn" type="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h14l-4-4M20 16H6l4 4"/></svg>Move money</button></div>
   <div class="grid" id="grid"></div>
-  <nav class="actions" aria-label="Main">
-    <div class="in">
-      <button class="act on" id="homeTab" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7M5 10v10h14V10"/></svg></span><span>Home</span></button>
-      <button class="act" id="cashBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.8"/><path d="M6 9.5v5M18 9.5v5"/></svg></span><span>Cash</span></button>
-      <button class="act main" id="payBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8V5a1 1 0 0 1 1-1h3M16 4h3a1 1 0 0 1 1 1v3M20 16v3a1 1 0 0 1-1 1h-3M8 20H5a1 1 0 0 1-1-1v-3"/><rect x="8" y="8" width="3" height="3"/><rect x="13" y="8" width="3" height="3"/><rect x="8" y="13" width="3" height="3"/><path d="M13 13h3v3"/></svg></span><span>Scan &amp; Pay</span></button>
-      <button class="act" id="incomeBtn" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></span><span>Income</span></button>
-      <button class="act" id="anTab" type="button"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 20V11M12 20V5M19 20v-6"/></svg></span><span>Analysis</span></button>
-    </div>
-  </nav>
   <section class="recent" id="recent" hidden>
     <div class="sechead"><h2 class="sh">Recent payments</h2></div>
     <div class="alist" id="recentList"></div>
@@ -682,7 +683,7 @@ function render(){
   const spent=state.buckets.reduce((a,b)=>a+b.spent,0);
   const day=Math.max(1,Math.floor((Date.now()-new Date(state.start+'T00:00'))/864e5)+1);
   const total=planned+state.unassigned;
-  $('exNote').hidden=state.example||(planned+state.unassigned)>0;
+  $('exNote').hidden=true;
   $('cycle').textContent='Day '+day+' of cycle';
   $('cycleLine').textContent='Cycle started '+fmtDate(state.start);
   $('bCount').textContent=state.buckets.length+' active';
