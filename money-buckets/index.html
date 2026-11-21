@@ -378,6 +378,10 @@ header{align-items:center}
 .chev{color:var(--muted);display:grid;place-items:center}.chev svg{width:16px;height:16px}
 .pill-btn.wide{align-self:stretch;padding:12px 16px;font-size:14px}
 .srow .tag.due{white-space:nowrap}
+.ac.card svg{width:24px;height:24px}
+.ctxt small.nb{color:var(--loan);font-weight:600}
+.tapr{cursor:pointer}
+input[type=date].txtin{min-height:46px}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -502,6 +506,8 @@ header{align-items:center}
       <div class="chips pb" id="pBuckets"></div>
       <label class="flabel" for="pTo">Paid to <i>(optional)</i></label>
       <input class="txtin" id="pTo" maxlength="40" placeholder="e.g. Das Grocery, vegetables" autocomplete="off">
+      <label class="flabel" for="pDate">Date <i>(change it for a payment you forgot to add)</i></label>
+      <input class="txtin" type="date" id="pDate">
       <div class="payee" id="pPayee" hidden>
         <span class="avatar" id="pAv"></span>
         <div class="ctxt"><b id="pName"></b><span id="pUpi"></span></div>
@@ -547,6 +553,7 @@ let state={start:'2026-11-07',cash:1200,buckets:defaults,unassigned:0,example:tr
 try{const s=JSON.parse(localStorage.getItem(KEY));if(s&&Array.isArray(s.buckets))state=s;}catch(e){}
 if(state.example===undefined)state.example=true;
 state.unassigned=state.unassigned||0;state.history=state.history||[];
+state.cycId=state.cycId||state.start;
 state.merchants=state.merchants||{};state.pending=state.pending||null;
 if(state.example&&!state.history.length){
   const mkb=sp=>defaults.map((b,k)=>({name:b.name,planned:b.planned,spent:sp[k]}));
@@ -626,7 +633,8 @@ function render(){
     const ic=el.querySelector('.ic');
     if(ICONS[b.name])ic.innerHTML=svg(ICONS[b.name]);else ic.textContent=b.name.charAt(0).toUpperCase();
     el.querySelector('.left').textContent=left<0?'−'+inr(-left):inr(left)+' left';
-    el.querySelector('.pct').textContent=sv?'Tap for goals':left<0?'Over budget':ln?'Tap for loans':b.planned?Math.round(used*100)+'% used':'Not planned';
+    const oc=cardIn(b.name);
+    el.querySelector('.pct').textContent=oc&&!sv&&!ln?'+'+inr(oc)+' on card':sv?'Tap for goals':left<0?'Over budget':ln?'Tap for loans':b.planned?Math.round(used*100)+'% used':'Not planned';
     el.querySelector('.name').textContent=b.name;
     el.title=b.planned?inr(b.spent)+' spent of '+inr(b.planned):'Not planned yet';
     g.appendChild(el);
@@ -708,6 +716,7 @@ $('incNext').onclick=()=>{
     $('useLast').hidden=inc.type!=='new';$('useSug').hidden=inc.type!=='new'||!state.history.length;
     $('incNext').textContent='Save';
     if(inc.type==='new'&&state.autoPlan){const sp=suggestPlan(inc.amount);if(sp)state.buckets.forEach(b=>{inc.alloc[b.name]=sp.plan[b.name]||0})}
+    if(inc.type==='new'&&cardDueAll()&&!inc.alloc['Loan EMI'])inc.alloc['Loan EMI']=emiTotal();
     renderAlloc();if(inc.type==='new'&&state.autoPlan&&state.history.length)toast('Suggested plan filled in. Change any amount.');return;
   }
   const used=Object.values(inc.alloc).reduce((a,v)=>a+v,0),left=inc.amount-used;
@@ -718,7 +727,10 @@ $('incNext').onclick=()=>{
     if(!state.example)state.history.push({start:state.start,end:today(),buckets:state.buckets.map(b=>({...b})),unassigned:state.unassigned,income:state.income,untracked:state.untracked||0});
     state.buckets=state.buckets.map(b=>({name:b.name,planned:(inc.alloc[b.name]||0)+(isSav(b)?savLeft+carry:0),spent:0}));
     if(state.example){state.goals=state.goals.filter(g=>!g.ex);state.loans=state.loans.filter(l=>!l.ex);state.txns=state.txns.filter(t=>!t.ex);state.history=state.history.filter(h=>!h.ex)}
-    state.start=today();state.unassigned=left;state.example=false;state.untracked=0;state.income=inc.amount;
+    const dues=state.loans.filter(isCard).map(l=>[l,nextBill(l)]);
+    state.start=today();state.unassigned=left;state.example=false;state.untracked=0;state.income=inc.amount;state.cycId='c'+Date.now();
+    {const lb=loanBucket();let room=lb?lb.planned:0;
+     dues.forEach(([l,d])=>{l.billDue=d;const a=Math.min(d,room);if(a>0&&lb){lb.spent+=a;room-=a;l.paidAmt=a;l.paidCycle=state.cycId}});}
     save();render();closeIncome();toast(carry?'New cycle started. '+inr(carry)+' moved to Savings':'New cycle started');
     if(state.history.length)setTimeout(()=>openSub('an:'+(state.history.length-1)),500);
   }else{
@@ -799,6 +811,7 @@ function openForm(cfg){
         if(f.value!=null&&f.value!=='')i.value=Number(f.value).toLocaleString('en-IN');
         i.onblur=()=>{i.value=i.value.trim()===''?'':toNum(i.value).toLocaleString('en-IN')};
       }else if(f.type==='rate'){i.inputMode='decimal';i.placeholder='e.g. 9.5';if(f.value!=null)i.value=f.value}
+      else if(f.type==='date'){i.type='date';i.value=f.value||today();i.max=today()}
       else{i.maxLength=40;i.placeholder=f.ph||'';i.value=f.value||''}
       w.append(i);
     }
@@ -895,8 +908,8 @@ function useGoal(g){openForm({title:'Use money from '+g.name,sub:'In this goal: 
 /* Loans inside Loan EMI: one main balance, pay each loan from it */
 const KINDS=['EMI','Credit card bill','Monthly interest','Other'];
 const KICON={'EMI':ICONS['Loan EMI'],'Monthly interest':'M19 5L5 19M7 7h.01M17 17h.01','Credit card bill':'M3 6h18v12H3zM3 10h18M7 15h3','Other':'M5 12h.01M12 12h.01M19 12h.01'};
-const paidNow=l=>l.paidCycle===state.start?(l.paidAmt||0):0;
-const emiTotal=()=>state.loans.reduce((a,l)=>a+(l.amount||0),0);
+const paidNow=l=>l.paidCycle===state.cycId?(l.paidAmt||0):0;
+const emiTotal=()=>state.loans.reduce((a,l)=>a+(isCard(l)?(nextBill(l)||l.amount||0):(l.amount||0)),0);
 const loanMain=()=>{const lb=loanBucket();return lb?lb.planned-lb.spent:0};
 function renderLoans(){
   sub='loan';$('subPage').className='page loanpage';$('subTitle').textContent='Loans';
@@ -917,6 +930,7 @@ function renderLoans(){
     const ic=mk('span','lic');ic.innerHTML=svg(KICON[l.kind]||KICON.Other);top.append(ic);
     const t=mk('div','ctxt');
     t.append(mk('b',null,l.name),mk('small','num',l.amount?l.kind+' '+inr(l.amount):l.kind));
+    if(isCard(l))t.append(mk('small','num nb','Next bill so far '+inr(nextBill(l))));
     top.append(t);
     const pd=mk('div','paid num'+(paidNow(l)?'':' none'));pd.append(mk('small',null,'Paid'),mk('b',null,inr(paidNow(l))));
     top.append(pd);c.append(top);
@@ -924,12 +938,14 @@ function renderLoans(){
     c.append(a);B.append(c);
   });
 }
-function payLoan(l){const main=loanMain();openForm({title:'Pay '+l.name,ok:'Pay',sub:'Main balance: '+inr(main),
-  fields:[{id:'amt',type:'money',label:'Amount',value:l.amount||null}],
-  onSubmit:v=>{if(!v.amt)return 'Type an amount.';
-    if(v.amt>main)return 'Only '+inr(main)+' is in the main balance. Move more money into Loan EMI first.';
-    loanBucket().spent+=v.amt;l.paidAmt=paidNow(l)+v.amt;l.paidCycle=state.start;
-    done('Paid '+inr(v.amt)+' to '+l.name)}})}
+function payLoan(l){const main=loanMain(),pd=paidNow(l);openForm({title:'Pay '+l.name,ok:'Save',
+  sub:'Main balance: '+inr(main)+(pd?' · Already paid '+inr(pd):''),
+  fields:[{id:'amt',type:'money',label:'Paid this cycle',value:pd||(isCard(l)?(l.billDue||null):null)||l.amount||null}],
+  onSubmit:v=>{if(v.amt==null)return 'Type an amount. Type 0 to undo.';
+    const diff=v.amt-pd;
+    if(diff>main)return 'Only '+inr(main)+' is in the main balance. Move more money into Loan EMI first.';
+    loanBucket().spent+=diff;l.paidAmt=v.amt;l.paidCycle=state.cycId;
+    done(v.amt?'Paid '+inr(v.amt)+' to '+l.name:'Payment removed')}})}
 function loanFields(l){return[
   {id:'name',type:'text',label:'Loan name',value:l?l.name:'',ph:'e.g. Car loan, SBI credit card'},
   {id:'kind',type:'chips',label:'What do you pay?',options:KINDS.map(k=>({v:k,t:k})),value:l?l.kind:'EMI'},
@@ -955,8 +971,8 @@ function txRow(t){
   const r=mk('div','arow'),m=mk('span','mini');
   if(t.app==='Cash')m.innerHTML=svg('M2.5 6h19v12h-19zM12 9.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6zM6 9.5v5M18 9.5v5');
   else if(ICONS[t.bucket])m.innerHTML=svg(ICONS[t.bucket]);else m.textContent=t.bucket.charAt(0).toUpperCase();
-  const nm=mk('span','nm');nm.append(mk('span',null,t.name),mk('small',null,fmtDate(t.date)+' · '+(t.app==='Cash'?'Cash':'UPI')));
-  r.append(m,nm,mk('span','amtr num','−'+inr(t.amt)));return r;
+  const nm=mk('span','nm');nm.append(mk('span',null,t.name),mk('small',null,fmtDate(t.date)+' · '+payLabel(t)));
+  r.append(m,nm,mk('span','amtr num','−'+inr(t.amt)));r.classList.add('tapr');r.onclick=()=>editTxn(t);return r;
 }
 function renderBucket(name){
   const b=state.buckets.find(x=>x.name===name);if(!b){$('subPage').hidden=true;return}
@@ -966,8 +982,9 @@ function renderBucket(name){
   const hero=mk('section','hero'+(left<0?' over':''));
   hero.append(mk('span','label','Left this cycle'),mk('span','big num',left<0?'Over by '+inr(-left):inr(left)));
   const r=mk('div','row num');r.append(mk('span',null,'Planned '+inr(b.planned)),mk('span',null,'Spent '+inr(b.spent)));
+  {const oc=cardIn(name);if(oc)r.append(mk('span',null,'+'+inr(oc)+' on credit card'))}
   hero.append(r);B.append(hero);
-  const tx=(state.txns||[]).filter(t=>t.bucket===name),cur=tx.filter(t=>t.date>=state.start),old=tx.filter(t=>t.date<state.start);
+  const tx=(state.txns||[]).filter(t=>t.bucket===name),cur=tx.filter(t=>inCur(t)),old=tx.filter(t=>!inCur(t));
   const sh=mk('div','sechead');sh.append(mk('h4',null,'This cycle')); B.append(sh);
   if(!cur.length){const e=mk('div','card empty');e.append(mk('span',null,'Nothing spent from this bucket yet in this cycle.'));B.append(e)}
   else{const l=mk('div','alist');cur.forEach(t=>l.append(txRow(t)));B.append(l)}
@@ -1023,6 +1040,7 @@ function renderAnalysis(i){
   const r=mk('div','row num');
   r.append(mk('span',null,'Income '+inr(inc)),mk('span',null,kept>=0?'Not spent '+inr(kept):'Overspent '+inr(-kept)));
   if(c.untracked)r.append(mk('span',null,'Untracked cash '+inr(c.untracked)));
+  {const cs=txIn(c).filter(t=>t.app==='Card').reduce((a,t)=>a+t.amt,0);if(cs)r.append(mk('span',null,'On credit card '+inr(cs)))}
   hero.append(r);B.append(hero);
 
   /* 1. Planned vs spent */
@@ -1197,6 +1215,45 @@ function editName(){openForm({title:'Your name',ok:'Save',fields:[{id:'name',typ
 $('meBtn').onclick=()=>openSub('me');
 $('cashBar').onclick=countCash;
 
+
+/* Credit card, forgotten payments, edit/delete */
+function isCard(l){return l&&l.kind==='Credit card bill'}
+function inCur(t){return t.cyc?t.cyc===state.cycId:t.date>=state.start}
+function nextBill(l){return (state.txns||[]).filter(t=>t.app==='Card'&&t.cardId===l.id&&inCur(t)).reduce((a,t)=>a+t.amt,0)}
+function cardDueAll(){return state.loans.filter(isCard).reduce((a,l)=>a+nextBill(l),0)}
+function cardIn(name){return (state.txns||[]).filter(t=>t.app==='Card'&&t.bucket===name&&inCur(t)).reduce((a,t)=>a+t.amt,0)}
+function payLabel(t){return t.app==='Cash'?'Cash':t.app==='Card'?'Credit card':'UPI'}
+function cardPay(){
+  const err=payErr();if(err){$('pErr').textContent=err;return}
+  const cards=state.loans.filter(isCard);
+  const go=id=>{
+    const c=state.loans.find(l=>l.id===id),p=newPending('Card');p.cardId=id;
+    recordTxn(p);if(pay.payee)state.merchants[pay.payee.pa]=pay.bucket;
+    $('payPage').hidden=true;done(inr(p.amt)+' on '+c.name+'. Added to its next bill');
+  };
+  if(!cards.length){const c={id:'l'+Date.now(),name:'Credit card',kind:'Credit card bill',amount:null};state.loans.push(c);go(c.id);return}
+  if(cards.length===1){go(cards[0].id);return}
+  openForm({title:'Which card?',ok:'Save',fields:[{id:'card',type:'chips',label:'Card',options:cards.map(c=>({v:c.id,t:c.name})),value:cards[0].id}],onSubmit:v=>{go(v.card)}});
+}
+function txApply(t,sign){
+  if(!inCur(t))return;
+  if(t.app!=='Card'){const b=state.buckets.find(x=>x.name===t.bucket);if(b)b.spent+=sign*t.amt}
+  if(t.app==='Cash')state.cash-=sign*t.amt;
+}
+function editTxn(t){
+  openForm({title:'Edit payment',ok:'Save',sub:'Paid by '+payLabel(t).toLowerCase().replace('upi','UPI'),
+    fields:[{id:'amt',type:'money',label:'Amount',value:t.amt},
+      {id:'name',type:'text',label:'Paid to',value:t.name},
+      {id:'bucket',type:'chips',label:'Bucket',options:state.buckets.filter(b=>b.name!=='Savings').map(b=>({v:b.name,t:b.name})),value:t.bucket},
+      {id:'date',type:'date',label:'Date',value:t.date}],
+    onSubmit:v=>{
+      if(!v.amt)return 'Type an amount.';if(!v.bucket)return 'Choose a bucket.';if(!v.date)return 'Choose a date.';
+      txApply(t,-1);Object.assign(t,{amt:v.amt,name:v.name||t.name,bucket:v.bucket,date:v.date});txApply(t,1);
+      state.txns.sort((a,b)=>b.date.localeCompare(a.date));done('Payment updated');
+    },
+    delLabel:'Delete this payment',
+    onDelete:()=>{txApply(t,-1);state.txns=state.txns.filter(x=>x!==t);done('Payment deleted')}});
+}
 /* Pay: amount and bucket here, scan inside the UPI app */
 let pay={},askTimer=null;
 const APPS=[
@@ -1209,7 +1266,7 @@ const isIOS=/iPad|iPhone|iPod/.test(navigator.userAgent)||(navigator.platform===
 function copyText(t){try{return navigator.clipboard.writeText(t)}catch(e){return Promise.reject(e)}}
 function openPay(){
   pay={payee:null,amt:0,bucket:''};
-  $('pAmt').value='';$('pTo').value='';$('pErr').textContent='';
+  $('pAmt').value='';$('pTo').value='';$('pErr').textContent='';$('pDate').value=today();$('pDate').max=today();
   renderPay();$('payPage').hidden=false;$('payPage').scrollTop=0;$('pAmt').focus();
 }
 $('payBack').onclick=()=>{$('payPage').hidden=true};
@@ -1269,6 +1326,8 @@ function renderApps(){
     };
     box.append(l);
   });
+  const cc=mk('button','app');cc.type='button';const cci=mk('span','ac card');cci.innerHTML=svg('M3 6h18v12H3zM3 10h18M7 15h3');
+  cc.append(cci,mk('span',null,'Credit card'));cc.onclick=cardPay;box.append(cc);
   $('pHow').textContent=filled
     ?'Your UPI app opens with '+inr(pay.amt)+' to '+(p.pn||p.pa)+' filled in. Pay there, then come back here and tap Yes.'
     :'Your UPI app opens. Scan the QR code there and pay, then come back here and tap Yes.';
@@ -1311,7 +1370,7 @@ $('qrCam').onchange=async e=>{
 };
 function newPending(app){
   const p=pay.payee;
-  return{id:'t'+Date.now(),amt:pay.amt,bucket:pay.bucket,name:$('pTo').value.trim()||(p&&(p.pn||p.pa))||'UPI payment',pa:p?p.pa:'',note:'',app};
+  return{id:'t'+Date.now(),amt:pay.amt,bucket:pay.bucket,name:$('pTo').value.trim()||(p&&(p.pn||p.pa))||'UPI payment',pa:p?p.pa:'',note:'',app,date:$('pDate').value||today()};
 }
 function startPending(app){
   state.pending=newPending(app);if(pay.payee)state.merchants[pay.payee.pa]=pay.bucket;save();
@@ -1327,8 +1386,9 @@ function askConfirm(){
   $('cSheet').hidden=false;
 }
 function recordTxn(p){
-  const b=state.buckets.find(x=>x.name===p.bucket);if(b)b.spent+=p.amt;
-  state.txns.unshift({id:p.id,date:today(),amt:p.amt,bucket:p.bucket,name:p.name,pa:p.pa,note:p.note,app:p.app});
+  const b=state.buckets.find(x=>x.name===p.bucket);if(b&&p.app!=='Card')b.spent+=p.amt;
+  state.txns.unshift({id:p.id,date:p.date||today(),amt:p.amt,bucket:p.bucket,name:p.name,pa:p.pa,note:p.note,app:p.app,cardId:p.cardId,cyc:state.cycId});
+  state.txns.sort((a,b)=>b.date.localeCompare(a.date));
   state.txns=state.txns.slice(0,300);
 }
 $('cYes').onclick=()=>{const p=state.pending;state.pending=null;$('cSheet').hidden=true;if(p){recordTxn(p);done(inr(p.amt)+' taken from '+p.bucket)}};
@@ -1351,8 +1411,8 @@ function renderExtras(){
     const r=mk('div','arow'),m=mk('span','mini');
     if(ICONS[t.bucket])m.innerHTML=svg(ICONS[t.bucket]);else m.textContent=t.bucket.charAt(0).toUpperCase();
     const nm=mk('span','nm'),sm=mk('small');sm.append(document.createTextNode(fmtDate(t.date)+' · '),mk('em','bk',t.bucket));nm.append(mk('span',null,t.name),sm);
-    const am=mk('span','amtc');am.append(mk('b','amtr num','−'+inr(t.amt)),mk('small',null,t.app==='Cash'?'Cash':'UPI'));
-    r.append(m,nm,am);rl.append(r);
+    const am=mk('span','amtc');am.append(mk('b','amtr num','−'+inr(t.amt)),mk('small',null,payLabel(t)));
+    r.append(m,nm,am);r.classList.add('tapr');r.onclick=()=>editTxn(t);rl.append(r);
   });
 }
 $('payBtn').onclick=openPay;
