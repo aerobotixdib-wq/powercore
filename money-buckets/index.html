@@ -376,6 +376,8 @@ header{align-items:center}
 .srow{width:100%;background:none;border:0;border-bottom:1px solid var(--line);text-align:left;cursor:pointer;color:inherit;font:inherit}
 .srow:last-child{border-bottom:0}
 .chev{color:var(--muted);display:grid;place-items:center}.chev svg{width:16px;height:16px}
+.pill-btn.wide{align-self:stretch;padding:12px 16px;font-size:14px}
+.srow .tag.due{white-space:nowrap}
 </style>
 <style>
   :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
@@ -705,7 +707,8 @@ $('incNext').onclick=()=>{
       :'Add this extra money to any buckets. Anything you leave stays unassigned.';
     $('useLast').hidden=inc.type!=='new';$('useSug').hidden=inc.type!=='new'||!state.history.length;
     $('incNext').textContent='Save';
-    renderAlloc();return;
+    if(inc.type==='new'&&state.autoPlan){const sp=suggestPlan(inc.amount);if(sp)state.buckets.forEach(b=>{inc.alloc[b.name]=sp.plan[b.name]||0})}
+    renderAlloc();if(inc.type==='new'&&state.autoPlan&&state.history.length)toast('Suggested plan filled in. Change any amount.');return;
   }
   const used=Object.values(inc.alloc).reduce((a,v)=>a+v,0),left=inc.amount-used;
   if(left<0)return;
@@ -1092,7 +1095,8 @@ function renderAnalysis(i){
       row.append(m,nm,mk('span','amtr num',inr(s.plan[b.name]||0)));l.append(row);
     });
     B.append(l);
-    B.append(mk('p','hint num',s.short?'This plan is '+inr(s.short)+' more than an income of '+inr(base)+'. Cut back some buckets when you add income.':'Based on an income of '+inr(base)+' and what you actually spent. When you add New Income, tap "Use suggested plan" to fill it in.'));
+    B.append(mk('p','hint num',s.short?'This plan is '+inr(s.short)+' more than an income of '+inr(base)+'. Cut back some buckets when you add income.':'Based on an income of '+inr(base)+' and what you actually spent. Tap below to use it for this cycle now, or switch on auto-fill in Profile & settings.'));
+    B.append(act('Use this plan for this cycle',()=>applyPlan(s,base),'pill-btn wide'));
   }else B.append(mk('p','hint','After your first full cycle, the app will suggest a plan for the next one based on what you actually spent.'));
 }
 $('anBtn').onclick=()=>openSub('an');
@@ -1178,9 +1182,15 @@ function renderMe(){
   const l=mk('div','alist');
   const due=cashDue();
   l.append(setRow(CASHI.count,'Weekly cash check',(due?'Due now · ':'')+'Last counted '+(state.cashChecked?fmtDate(state.cashChecked):'never'),due?'Due':'',countCash));
+  l.append(setRow('M5 12l4 4L19 7','Auto-fill suggested plan',state.autoPlan?'On · fills in your buckets when you add New Income':'Off · tap to switch on',state.autoPlan?'On':'',()=>{state.autoPlan=!state.autoPlan;done(state.autoPlan?'Auto-fill switched on':'Auto-fill switched off')}));
   l.append(setRow('M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8zM4 21a8 8 0 0 1 16 0','Your name',nm0||'Not set',null,editName));
   l.append(setRow('M4 7h16M10 11v6M14 11v6M6 7l1 13h10l1-13M9 7V4h6v3','Clear saved data','Payments only, or everything',null,()=>$('resetBtn').click()));
   B.append(l);
+}
+function applyPlan(sp,base){
+  state.buckets.forEach(b=>{if(sp.plan[b.name]!=null)b.planned=sp.plan[b.name]});
+  state.unassigned=Math.max(0,base-state.buckets.reduce((a,b)=>a+b.planned,0));
+  done('Suggested plan applied to this cycle');
 }
 function editName(){openForm({title:'Your name',ok:'Save',fields:[{id:'name',type:'text',label:'Name',value:state.name||'',ph:'e.g. Indrajit'}],
   onSubmit:v=>{state.name=v.name;done(v.name?'Name saved':'Name removed')}})}
